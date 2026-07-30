@@ -10,6 +10,8 @@ export interface StreamRepository {
   listLive(): Promise<StreamWithCreator[]>;
   listByCreator(creatorId: string): Promise<Stream[]>;
   getById(id: string): Promise<Stream | null>;
+  /** The creator's current live stream, if any — at most one can exist (streams_one_live_per_creator). */
+  getLiveByCreator(creatorId: string): Promise<Stream | null>;
   start(input: StartStreamInput): Promise<Stream>;
   end(id: string): Promise<Stream>;
   /** Fires whenever the given stream's row changes (e.g. status: live -> ended). */
@@ -45,10 +47,22 @@ export const streamRepository: StreamRepository = {
     return unwrapNullable(result);
   },
 
+  async getLiveByCreator(creatorId) {
+    const result = await supabase
+      .from('streams')
+      .select('*')
+      .eq('creator_id', creatorId)
+      .eq('status', 'live')
+      .maybeSingle();
+    return unwrapNullable(result);
+  },
+
   async start(input) {
     // status defaults to 'live' at the database level (see migration) —
     // deliberately not settable here, starting a stream always means going live.
     const result = await supabase.from('streams').insert(input).select().single();
+    console.log(result.data);
+    console.log(result.error);
     return unwrap(result);
   },
 

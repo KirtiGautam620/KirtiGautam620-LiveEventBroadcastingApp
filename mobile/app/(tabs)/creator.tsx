@@ -36,10 +36,10 @@ export default function CreatorScreen() {
     // session is always set here: the root AuthGate blocks rendering any
     // screen until anonymous sign-in succeeds.
     if (!session) return;
-    createStream.mutate(
-      { creator_id: session.user.id, title: 'Live Stream' },
-      { onSuccess: (stream) => router.push(`/viewer/${stream.id}`) },
-    );
+    const input = { creator_id: session.user.id, title: 'Live Stream' };
+    console.log(session.user.id);
+    console.log(input);
+    createStream.mutate(input, { onSuccess: (stream) => router.push(`/viewer/${stream.id}`) });
   };
 
   const handleEnd = () => {
@@ -70,7 +70,7 @@ export default function CreatorScreen() {
           ) : createStream.isError ? (
             <ErrorView
               title="Couldn't start stream"
-              description="Something went wrong while starting your stream."
+              description={createStream.error.message}
               actionLabel="Retry"
               onAction={handleStart}
             />

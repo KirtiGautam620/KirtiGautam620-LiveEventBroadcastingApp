@@ -8,8 +8,13 @@ import { generateClientId } from '@/utils/id';
 
 import { useAnonymousAuth } from './useAnonymousAuth';
 
+// Exported so useReconnect can invalidate every mounted chat query by
+// prefix (['messages']) without needing to know which streamId(s) are
+// currently active, and without duplicating this literal as a magic string.
+export const CHAT_MESSAGES_QUERY_KEY_PREFIX = ['messages'] as const;
+
 export function chatQueryKey(streamId: string) {
-  return ['messages', streamId] as const;
+  return [...CHAT_MESSAGES_QUERY_KEY_PREFIX, streamId] as const;
 }
 
 // Stable reference for "no messages yet" — avoids a fresh [] on every

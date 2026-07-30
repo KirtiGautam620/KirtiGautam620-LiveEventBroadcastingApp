@@ -16,7 +16,7 @@ export default function BrowseScreen() {
   const featuredStreams = streams?.slice(0, 3) ?? [];
 
   return (
-    <ScreenContainer scroll>
+    <ScreenContainer scroll style={{ paddingBottom: theme.spacing.xxl }}>
       <AppHeader title="Live" subtitle="Discover what's happening right now" />
 
       <View style={{ paddingHorizontal: theme.spacing.lg, marginTop: theme.spacing.sm }}>
@@ -89,19 +89,6 @@ export default function BrowseScreen() {
           </Animated.View>
         </>
       )}
-
-      <View
-        style={{
-          marginTop: theme.spacing.xl,
-          marginBottom: theme.spacing.xxl,
-          paddingHorizontal: theme.spacing.lg,
-        }}
-      >
-        <Text style={[theme.typography.heading2, { color: theme.colors.textPrimary }]}>
-          Recently Watched
-        </Text>
-        <EmptyState title="No recent streams" description="Streams you watch will show up here." />
-      </View>
     </ScreenContainer>
   );
 }
