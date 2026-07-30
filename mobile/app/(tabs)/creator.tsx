@@ -1,8 +1,18 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { Avatar, LiveBadge, PrimaryButton, ScreenContainer, ViewerCountBadge } from '@/components';
+import {
+  Avatar,
+  ErrorView,
+  LiveBadge,
+  LoadingView,
+  PrimaryButton,
+  ScreenContainer,
+  ViewerCountBadge,
+} from '@/components';
+import { useAnonymousAuth, useCreateStream, useEndStream } from '@/hooks';
 import { useTheme } from '@/theme';
 
 const MOCK_CHAT = [
@@ -11,10 +21,67 @@ const MOCK_CHAT = [
   { id: '3', name: 'Priya', message: "let's goo" },
 ];
 
-// Placeholder: design-system + navigation skeleton only. Starting/ending a
-// stream and real chat land in later steps — End Stream is a no-op stub.
+// Video area stays a placeholder View (no real playback yet). No chat,
+// presence, or offline-queue logic implemented — chat below is still the
+// same static mock content from Step 5.
 export default function CreatorScreen() {
   const theme = useTheme();
+  const router = useRouter();
+  const { session } = useAnonymousAuth();
+  const createStream = useCreateStream();
+  const endStream = useEndStream();
+
+  const activeStream = createStream.data ?? null;
+
+  const handleStart = () => {
+    // session is always set here: the root AuthGate blocks rendering any
+    // screen until anonymous sign-in succeeds.
+    if (!session) return;
+    createStream.mutate(
+      { creator_id: session.user.id, title: 'Live Stream' },
+      { onSuccess: (stream) => router.push(`/viewer/${stream.id}`) },
+    );
+  };
+
+  const handleEnd = () => {
+    if (!activeStream) return;
+    endStream.mutate(activeStream.id, { onSuccess: () => createStream.reset() });
+  };
+
+  if (!activeStream) {
+    return (
+      <ScreenContainer edges={['top', 'bottom']} style={{ padding: theme.spacing.lg }}>
+        <View style={[styles.video, { borderRadius: theme.radius.lg }]}>
+          <LinearGradient
+            colors={['#341F97', '#0A0A0F']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[StyleSheet.absoluteFillObject, { borderRadius: theme.radius.lg }]}
+          />
+          <View style={styles.idleOverlay}>
+            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
+              Ready to go live?
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ marginTop: theme.spacing.lg, flex: 1 }}>
+          {createStream.isPending ? (
+            <LoadingView message="Starting stream..." />
+          ) : createStream.isError ? (
+            <ErrorView
+              title="Couldn't start stream"
+              description="Something went wrong while starting your stream."
+              actionLabel="Retry"
+              onAction={handleStart}
+            />
+          ) : (
+            <PrimaryButton label="Start Stream" onPress={handleStart} />
+          )}
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer edges={['top', 'bottom']} style={{ padding: theme.spacing.lg }}>
@@ -71,8 +138,14 @@ export default function CreatorScreen() {
       </Animated.View>
 
       <View style={{ marginTop: theme.spacing.lg }}>
-        {/* TODO: wire to streamRepository.end() once stream state exists */}
-        <PrimaryButton label="End Stream" variant="danger" onPress={() => {}} />
+        <PrimaryButton
+          label={
+            endStream.isPending ? 'Ending...' : endStream.isError ? 'Failed — Retry' : 'End Stream'
+          }
+          variant="danger"
+          onPress={handleEnd}
+          disabled={endStream.isPending}
+        />
       </View>
     </ScreenContainer>
   );
@@ -80,6 +153,7 @@ export default function CreatorScreen() {
 
 const styles = StyleSheet.create({
   video: { aspectRatio: 16 / 9, overflow: 'hidden' },
+  idleOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   overlayRow: {
     flex: 1,
     flexDirection: 'row',
