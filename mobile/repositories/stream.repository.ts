@@ -1,12 +1,13 @@
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 import { supabase } from '@/supabase/client';
-import type { StartStreamInput, Stream } from '@/types/database';
+import type { StartStreamInput, Stream, StreamWithCreator } from '@/types/database';
 
 import { unwrap, unwrapNullable } from './_shared';
 
 export interface StreamRepository {
-  listLive(): Promise<Stream[]>;
+  /** Live streams with their creator's profile embedded — see StreamWithCreator. */
+  listLive(): Promise<StreamWithCreator[]>;
   listByCreator(creatorId: string): Promise<Stream[]>;
   getById(id: string): Promise<Stream | null>;
   start(input: StartStreamInput): Promise<Stream>;
@@ -14,14 +15,17 @@ export interface StreamRepository {
   /** Fires whenever the given stream's row changes (e.g. status: live -> ended). */
   subscribeToStream(id: string, onChange: (stream: Stream) => void): () => void;
   /** Fires with the fresh live-streams list whenever any stream changes. */
-  subscribeToLiveStreams(onChange: (streams: Stream[]) => void): () => void;
+  subscribeToLiveStreams(onChange: (streams: StreamWithCreator[]) => void): () => void;
 }
 
 export const streamRepository: StreamRepository = {
   async listLive() {
+    // Embeds the creator's profile via the FK (see migration:
+    // streams_creator_id_fkey) instead of a separate per-card profile
+    // fetch, which would be an N+1 query against the streams list.
     const result = await supabase
       .from('streams')
-      .select('*')
+      .select('*, creator:profiles!streams_creator_id_fkey(username, display_name, avatar_url)')
       .eq('status', 'live')
       .order('started_at', { ascending: false });
     return unwrap(result);

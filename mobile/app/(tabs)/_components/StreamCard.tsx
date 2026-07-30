@@ -2,10 +2,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Avatar, Card, LiveBadge, ViewerCountBadge } from '@/components';
+import { Avatar, Card, LiveBadge } from '@/components';
 import { useTheme } from '@/theme';
-
-import type { MockStream } from './mockStreams';
+import type { StreamWithCreator } from '@/types/database';
 
 const THUMBNAIL_GRADIENTS: [string, string][] = [
   ['#6C5CE7', '#341F97'],
@@ -22,7 +21,7 @@ function gradientForIndex(index: number): [string, string] {
 }
 
 interface StreamCardProps {
-  stream: MockStream;
+  stream: StreamWithCreator;
   index: number;
   featured?: boolean;
 }
@@ -30,6 +29,7 @@ interface StreamCardProps {
 export function StreamCard({ stream, index, featured = false }: StreamCardProps) {
   const theme = useTheme();
   const router = useRouter();
+  const creatorName = stream.creator?.display_name ?? stream.creator?.username ?? 'Streamer';
 
   return (
     <Card
@@ -45,7 +45,6 @@ export function StreamCard({ stream, index, featured = false }: StreamCardProps)
         />
         <View style={[styles.thumbnailOverlay, { padding: theme.spacing.xs }]}>
           <LiveBadge />
-          <ViewerCountBadge count={stream.viewerCount} />
         </View>
       </View>
 
@@ -57,20 +56,22 @@ export function StreamCard({ stream, index, featured = false }: StreamCardProps)
           {stream.title}
         </Text>
         <View style={[styles.meta, { marginTop: theme.spacing.xs }]}>
-          <Avatar name={stream.creatorName} size={24} />
+          <Avatar name={creatorName} uri={stream.creator?.avatar_url ?? undefined} size={24} />
           <View style={{ marginLeft: theme.spacing.xs, flex: 1 }}>
             <Text
               numberOfLines={1}
               style={[theme.typography.caption, { color: theme.colors.textSecondary }]}
             >
-              {stream.creatorName}
+              {creatorName}
             </Text>
-            <Text
-              numberOfLines={1}
-              style={[theme.typography.label, { color: theme.colors.textMuted }]}
-            >
-              {stream.category}
-            </Text>
+            {stream.description ? (
+              <Text
+                numberOfLines={1}
+                style={[theme.typography.label, { color: theme.colors.textMuted }]}
+              >
+                {stream.description}
+              </Text>
+            ) : null}
           </View>
         </View>
       </View>
@@ -82,11 +83,6 @@ const styles = StyleSheet.create({
   gridCard: { width: '47%' },
   featuredCard: { width: 220 },
   thumbnail: { aspectRatio: 16 / 9, overflow: 'hidden' },
-  thumbnailOverlay: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
+  thumbnailOverlay: { flex: 1, alignItems: 'flex-start' },
   meta: { flexDirection: 'row', alignItems: 'center' },
 });
