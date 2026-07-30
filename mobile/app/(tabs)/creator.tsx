@@ -4,7 +4,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import {
-  Avatar,
   ErrorView,
   LiveBadge,
   LoadingView,
@@ -12,18 +11,14 @@ import {
   ScreenContainer,
   ViewerCountBadge,
 } from '@/components';
+import { ChatPanel } from '@/features/chat';
 import { useAnonymousAuth, useCreateStream, useEndStream, usePresence } from '@/hooks';
 import { useTheme } from '@/theme';
 
-const MOCK_CHAT = [
-  { id: '1', name: 'Jules', message: 'this is awesome!! 🔥' },
-  { id: '2', name: 'Ren', message: 'wya from?' },
-  { id: '3', name: 'Priya', message: "let's goo" },
-];
-
-// Video area stays a placeholder View (no real playback yet). No chat or
-// offline-queue logic implemented — chat below is still the same static
-// mock content from Step 5. Viewer count is real (Realtime Presence).
+// Video area stays a placeholder View (no real playback yet). No offline
+// queue, optimistic UI, or reconnect-sync logic implemented. Viewer count
+// is real (Realtime Presence, Step 9); chat is real (Realtime Postgres
+// Changes, Step 10).
 export default function CreatorScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -105,8 +100,7 @@ export default function CreatorScreen() {
         </View>
       </Animated.View>
 
-      <Animated.View
-        entering={FadeIn.duration(400).delay(100)}
+      <View
         style={[
           styles.chatPanel,
           {
@@ -125,21 +119,8 @@ export default function CreatorScreen() {
         >
           CHAT
         </Text>
-        {MOCK_CHAT.map((entry) => (
-          <View key={entry.id} style={[styles.chatRow, { marginBottom: theme.spacing.sm }]}>
-            <Avatar name={entry.name} size={24} />
-            <Text
-              style={[
-                theme.typography.caption,
-                { color: theme.colors.textPrimary, marginLeft: theme.spacing.xs, flex: 1 },
-              ]}
-            >
-              <Text style={theme.typography.label}>{entry.name} </Text>
-              {entry.message}
-            </Text>
-          </View>
-        ))}
-      </Animated.View>
+        <ChatPanel streamId={activeStream.id} />
+      </View>
 
       <View style={{ marginTop: theme.spacing.lg }}>
         <PrimaryButton
@@ -165,5 +146,4 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   chatPanel: { flex: 1 },
-  chatRow: { flexDirection: 'row', alignItems: 'flex-start' },
 });

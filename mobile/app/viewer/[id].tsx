@@ -1,23 +1,17 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, EmptyState, ErrorView, LoadingView, ViewerCountBadge } from '@/components';
+import { EmptyState, ErrorView, LoadingView, ViewerCountBadge } from '@/components';
+import { ChatPanel } from '@/features/chat';
 import { usePresence, useStream } from '@/hooks';
 import { useTheme } from '@/theme';
 
-const MOCK_CHAT = [
-  { id: '1', name: 'Amara', message: 'this is so good 👏' },
-  { id: '2', name: 'Leo', message: 'first time catching you live!' },
-  { id: '3', name: 'Sana', message: '🔥🔥🔥' },
-  { id: '4', name: 'Devon', message: 'where are you streaming from?' },
-];
-
-// Video area stays a placeholder (gradient background). No chat or offline
-// queue implemented — chat below is still the same static mock content
-// from Step 5. Viewer count is real (Realtime Presence).
+// Video area stays a placeholder (gradient background). No offline queue,
+// optimistic UI, or reconnect-sync logic implemented. Viewer count is real
+// (Realtime Presence, Step 9); chat is real (Realtime Postgres Changes,
+// Step 10).
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
@@ -82,63 +76,9 @@ export default function ViewerScreen() {
               {stream.title}
             </Text>
 
-            <View style={styles.spacer} />
-
-            <Animated.View
-              entering={FadeIn.duration(400)}
-              style={{ paddingHorizontal: theme.spacing.md }}
-            >
-              {MOCK_CHAT.map((entry) => (
-                <View key={entry.id} style={[styles.chatRow, { marginBottom: theme.spacing.sm }]}>
-                  <Avatar name={entry.name} size={22} />
-                  <View
-                    style={[
-                      styles.chatBubble,
-                      {
-                        backgroundColor: theme.colors.overlay,
-                        borderRadius: theme.radius.md,
-                        marginLeft: theme.spacing.xs,
-                        padding: theme.spacing.sm,
-                      },
-                    ]}
-                  >
-                    <Text style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>
-                      <Text style={theme.typography.label}>{entry.name} </Text>
-                      {entry.message}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </Animated.View>
-
-            <Animated.View
-              entering={FadeIn.duration(400).delay(100)}
-              style={[
-                styles.inputBar,
-                {
-                  backgroundColor: theme.colors.overlay,
-                  borderRadius: theme.radius.full,
-                  marginHorizontal: theme.spacing.md,
-                  marginTop: theme.spacing.sm,
-                  paddingHorizontal: theme.spacing.md,
-                  paddingVertical: theme.spacing.sm,
-                },
-              ]}
-            >
-              <Text style={[theme.typography.body, { color: theme.colors.textMuted, flex: 1 }]}>
-                Say something...
-              </Text>
-              <View
-                style={[
-                  styles.sendButton,
-                  { backgroundColor: theme.colors.accent, borderRadius: theme.radius.full },
-                ]}
-              >
-                <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-                  ➤
-                </Text>
-              </View>
-            </Animated.View>
+            <View style={styles.chatArea}>
+              <ChatPanel streamId={stream.id} />
+            </View>
           </>
         )}
       </SafeAreaView>
@@ -151,10 +91,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iconButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  spacer: { flex: 1 },
   centeredContent: { flex: 1, justifyContent: 'center' },
-  chatRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  chatBubble: { flex: 1 },
-  inputBar: { flexDirection: 'row', alignItems: 'center' },
-  sendButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  chatArea: { flex: 1 },
 });
