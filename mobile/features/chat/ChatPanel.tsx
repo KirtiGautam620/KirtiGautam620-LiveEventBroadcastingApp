@@ -1,13 +1,13 @@
-import { FlashList, type FlashListRef, type ListRenderItemInfo } from '@shopify/flash-list';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AnimatedPressable, EmptyState, ErrorView, LoadingView } from '@/components';
-import { useChat } from '@/hooks';
+import { useChat, type ChatDisplayMessage } from '@/hooks';
 import { useTheme } from '@/theme';
-import type { Message } from '@/types/database';
 
 import { ChatMessageBubble } from './ChatMessageBubble';
+import { useAutoScrollToEnd } from './useAutoScrollToEnd';
 
 interface ChatPanelProps {
   streamId: string;
@@ -21,22 +21,16 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
   // Presentation-only: highlights the input on focus. Doesn't touch the
   // chat send/receive flow.
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const listRef = useRef<FlashListRef<Message>>(null);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      listRef.current?.scrollToEnd({ animated: true });
-    }
-  }, [messages.length]);
+  const { listRef, handleScroll } = useAutoScrollToEnd(messages, currentUserId);
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<Message>) => (
+    ({ item }: ListRenderItemInfo<ChatDisplayMessage>) => (
       <ChatMessageBubble message={item} isOwnMessage={item.sender_id === currentUserId} />
     ),
     [currentUserId],
   );
 
-  const keyExtractor = useCallback((item: Message) => item.id, []);
+  const keyExtractor = useCallback((item: ChatDisplayMessage) => item.id, []);
 
   // FlashList recycles/measures based on prop identity more aggressively
   // than a plain View — a fresh object every render here is worth avoiding.
@@ -83,6 +77,8 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             contentContainerStyle={contentContainerStyle}
+            onScroll={handleScroll}
+            scrollEventThrottle={100}
           />
         )}
       </View>

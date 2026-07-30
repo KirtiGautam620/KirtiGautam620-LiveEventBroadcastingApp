@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
-import { CHAT_MESSAGES_QUERY_KEY_PREFIX } from '@/hooks/useChat';
+import { CHAT_MESSAGES_QUERY_KEY_PREFIX, PENDING_MESSAGES_QUERY_KEY_PREFIX } from '@/hooks/useChat';
 import { reconnectRealtime } from '@/services/realtimeConnection';
 import { syncPendingMessages } from '@/services/syncEngine';
 
@@ -23,7 +23,12 @@ export function useReconnect(): UseReconnectResult {
   const queryClient = useQueryClient();
   const [isReconnecting, setIsReconnecting] = useState(false);
 
-  const wasOnlineRef = useRef(isOnline);
+  // Deliberately seeded to false (not `isOnline`'s current value): a fresh
+  // app launch should always attempt one sync pass, even if the device is
+  // already online at mount, so any messages queued in a previous session
+  // (offline, then the app was closed before reconnecting) get drained
+  // without waiting for a live offline -> online transition to happen.
+  const wasOnlineRef = useRef(false);
   const isRunningRef = useRef(false);
 
   useEffect(() => {
@@ -56,8 +61,12 @@ export function useReconnect(): UseReconnectResult {
           // 2 + 3. Drain the offline queue and wait for it to finish.
           await syncPendingMessages();
           // 4. Refetch latest chat messages for whichever chat screen(s)
-          // are currently mounted.
-          await queryClient.invalidateQueries({ queryKey: CHAT_MESSAGES_QUERY_KEY_PREFIX });
+          // are currently mounted, and refresh the pending-queue view so
+          // now-synced messages drop out of their "sending..." state.
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: CHAT_MESSAGES_QUERY_KEY_PREFIX }),
+            queryClient.invalidateQueries({ queryKey: PENDING_MESSAGES_QUERY_KEY_PREFIX }),
+          ]);
         } finally {
           isRunningRef.current = false;
           setIsReconnecting(false);

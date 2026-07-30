@@ -1,4 +1,6 @@
 export * from './useAnonymousAuth';
+export * from './useProfile';
+export * from './useUpdateDisplayName';
 export * from './useStreams';
 export * from './useStream';
 export * from './useCreateStream';

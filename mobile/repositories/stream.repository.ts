@@ -9,7 +9,8 @@ export interface StreamRepository {
   /** Live streams with their creator's profile embedded — see StreamWithCreator. */
   listLive(): Promise<StreamWithCreator[]>;
   listByCreator(creatorId: string): Promise<Stream[]>;
-  getById(id: string): Promise<Stream | null>;
+  /** Includes the creator's profile embedded — the Viewer screen needs a display name, not a raw creator_id. */
+  getById(id: string): Promise<StreamWithCreator | null>;
   /** The creator's current live stream, if any — at most one can exist (streams_one_live_per_creator). */
   getLiveByCreator(creatorId: string): Promise<Stream | null>;
   start(input: StartStreamInput): Promise<Stream>;
@@ -43,7 +44,13 @@ export const streamRepository: StreamRepository = {
   },
 
   async getById(id) {
-    const result = await supabase.from('streams').select('*').eq('id', id).maybeSingle();
+    // Same creator join as listLive() — the Viewer screen renders the
+    // creator's display name, not their raw id.
+    const result = await supabase
+      .from('streams')
+      .select('*, creator:profiles!streams_creator_id_fkey(username, display_name, avatar_url)')
+      .eq('id', id)
+      .maybeSingle();
     return unwrapNullable(result);
   },
 

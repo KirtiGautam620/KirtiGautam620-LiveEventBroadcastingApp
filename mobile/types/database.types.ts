@@ -1,6 +1,7 @@
-// Hand-authored to exactly match backend/supabase/migrations/20260730000000_create_core_schema.sql,
-// in the same shape `supabase gen types typescript` produces, so it's a drop-in
-// replacement once a project exists to generate from for real:
+// Hand-authored to exactly match backend/supabase/migrations/20260730000000_create_core_schema.sql
+// and 20260730010000_add_streams_category.sql, in the same shape
+// `supabase gen types typescript` produces, so it's a drop-in replacement
+// once a project exists to generate from for real:
 //
 //   npx supabase gen types typescript --project-id <project-ref> --schema public > types/database.types.ts
 //
@@ -46,6 +47,7 @@ export interface Database {
           creator_id: string;
           title: string;
           description: string | null;
+          category: string;
           status: Database['public']['Enums']['stream_status'];
           playback_url: string | null;
           thumbnail_url: string | null;
@@ -59,6 +61,7 @@ export interface Database {
           creator_id: string;
           title: string;
           description?: string | null;
+          category?: string;
           status?: Database['public']['Enums']['stream_status'];
           playback_url?: string | null;
           thumbnail_url?: string | null;
@@ -72,6 +75,7 @@ export interface Database {
           creator_id?: string;
           title?: string;
           description?: string | null;
+          category?: string;
           status?: Database['public']['Enums']['stream_status'];
           playback_url?: string | null;
           thumbnail_url?: string | null;

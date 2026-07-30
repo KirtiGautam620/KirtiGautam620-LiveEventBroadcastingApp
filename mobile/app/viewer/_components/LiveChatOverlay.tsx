@@ -1,25 +1,28 @@
-import { FlashList, type FlashListRef, type ListRenderItemInfo } from '@shopify/flash-list';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { AnimatedPressable, Avatar } from '@/components';
-import { useChat } from '@/hooks';
+import { useAutoScrollToEnd } from '@/features/chat/useAutoScrollToEnd';
+import { useChat, type ChatDisplayMessage } from '@/hooks';
 import { useTheme } from '@/theme';
-import type { Message } from '@/types/database';
 
 interface LiveChatOverlayProps {
   streamId: string;
 }
 
-// There's no sender-profile join available here (messages only carry
-// sender_id — adding one is a repository change, out of scope for a
-// UI-only pass), so the display name is derived from the real sender_id
-// rather than inventing one. Not shared with features/chat/ChatMessageBubble
-// on purpose — this screen no longer uses that component at all.
-function getDisplayName(senderId: string | null): string {
-  if (!senderId) return 'Viewer';
-  return `Viewer ${senderId.slice(0, 4).toUpperCase()}`;
+// message.sender is joined by the repository (see MessageWithSender) — the
+// display_name is never a raw id. Falls back to "Creator" only if the
+// sender's profile has no display_name, which shouldn't normally happen
+// (onboarding requires one) but can for older data or a not-yet-synced
+// pending message (see toDisplayMessage in useChat.ts).
+function getDisplayName(message: ChatDisplayMessage): string {
+  return message.sender?.display_name?.trim() || 'Creator';
+}
+
+function formatTimestamp(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // Roughly the lower third of the screen — chat overlays the video but must
@@ -30,25 +33,44 @@ function getDisplayName(senderId: string | null): string {
 const MESSAGES_LIST_HEIGHT = Math.round(Dimensions.get('window').height * 0.32);
 
 interface MessageRowProps {
-  message: Message;
+  message: ChatDisplayMessage;
 }
 
 // Instagram-Live-style row: avatar + one inline text flow (bold username
-// leading into the message), not a separate bubble.
+// leading into the message) inside a translucent rounded bubble, so text
+// stays legible over any video content behind it.
 function MessageRowComponent({ message }: MessageRowProps) {
   const theme = useTheme();
-  const displayName = getDisplayName(message.sender_id);
+  const displayName = getDisplayName(message);
 
   return (
     <Animated.View
       entering={FadeIn.duration(220)}
-      style={[styles.messageRow, { marginBottom: theme.spacing.sm }]}
+      style={[styles.messageRow, { marginBottom: theme.spacing.md }]}
     >
-      <Avatar name={displayName} size={30} />
-      <Text style={[styles.messageText, { marginLeft: theme.spacing.sm }]}>
-        <Text style={styles.username}>{displayName} </Text>
-        <Text style={styles.messageBody}>{message.content}</Text>
-      </Text>
+      <Avatar name={displayName} size={28} />
+      <View
+        style={[
+          styles.bubble,
+          {
+            marginLeft: theme.spacing.sm,
+            borderRadius: theme.radius.lg,
+            paddingHorizontal: theme.spacing.md,
+            paddingVertical: theme.spacing.sm,
+            // Not-yet-synced messages read as visibly "in flight" rather
+            // than indistinguishable from a confirmed one.
+            opacity: message.pending ? 0.6 : 1,
+          },
+        ]}
+      >
+        <Text style={styles.messageText}>
+          <Text style={styles.username}>{displayName} </Text>
+          <Text style={styles.messageBody}>{message.content}</Text>
+        </Text>
+        <Text style={[styles.timestamp, { marginTop: theme.spacing.xs / 2 }]}>
+          {message.pending ? 'Sending…' : formatTimestamp(message.created_at)}
+        </Text>
+      </View>
     </Animated.View>
   );
 }
@@ -57,21 +79,15 @@ const MessageRow = memo(MessageRowComponent);
 
 function LiveChatOverlayComponent({ streamId }: LiveChatOverlayProps) {
   const theme = useTheme();
-  const { messages, isLoading, sendMessage, isSending } = useChat(streamId);
+  const { messages, currentUserId, isLoading, sendMessage, isSending } = useChat(streamId);
   const [draft, setDraft] = useState('');
-  const listRef = useRef<FlashListRef<Message>>(null);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      listRef.current?.scrollToEnd({ animated: true });
-    }
-  }, [messages.length]);
+  const { listRef, handleScroll } = useAutoScrollToEnd(messages, currentUserId);
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<Message>) => <MessageRow message={item} />,
+    ({ item }: ListRenderItemInfo<ChatDisplayMessage>) => <MessageRow message={item} />,
     [],
   );
-  const keyExtractor = useCallback((item: Message) => item.id, []);
+  const keyExtractor = useCallback((item: ChatDisplayMessage) => item.id, []);
   const contentContainerStyle = useMemo(
     () => ({ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm }),
     [theme.spacing.lg, theme.spacing.sm],
@@ -98,6 +114,8 @@ function LiveChatOverlayComponent({ streamId }: LiveChatOverlayProps) {
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             contentContainerStyle={contentContainerStyle}
+            onScroll={handleScroll}
+            scrollEventThrottle={100}
           />
         </View>
       ) : null}
@@ -133,12 +151,10 @@ function LiveChatOverlayComponent({ streamId }: LiveChatOverlayProps) {
           </AnimatedPressable>
         </View>
 
-        {/* Placeholder actions only — no functionality, so these are plain
-            (non-pressable) views rather than buttons that would do nothing
-            when tapped. */}
-        <View style={[styles.iconButton, { marginLeft: theme.spacing.sm }]}>
-          <Text style={styles.icon}>❤️</Text>
-        </View>
+        {/* Placeholder action only — no functionality, so it's a plain
+            (non-pressable) view rather than a button that would do nothing
+            when tapped. The heart reaction now lives in HeartReactions,
+            floating independently over the video (see viewer/[id].tsx). */}
         <View style={[styles.iconButton, { marginLeft: theme.spacing.sm }]}>
           <Text style={styles.icon}>📤</Text>
         </View>
@@ -153,10 +169,12 @@ export const LiveChatOverlay = memo(LiveChatOverlayComponent);
 
 const styles = StyleSheet.create({
   container: {},
-  messageRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  messageText: { flex: 1, flexShrink: 1 },
+  messageRow: { flexDirection: 'row', alignItems: 'flex-end' },
+  bubble: { flexShrink: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)' },
+  messageText: { flexShrink: 1 },
   username: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   messageBody: { color: '#FFFFFF', fontSize: 13, fontWeight: '400' },
+  timestamp: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 10 },
   inputRow: { flexDirection: 'row', alignItems: 'center' },
   inputPill: {
     flex: 1,

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
@@ -33,8 +34,20 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Browse' }} />
-      <Tabs.Screen name="creator" options={{ title: 'Creator' }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Browse',
+          tabBarIcon: ({ color, size }) => <Ionicons name="compass" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="creator"
+        options={{
+          title: 'Creator',
+          tabBarIcon: ({ color, size }) => <Ionicons name="videocam" size={size} color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

@@ -3,22 +3,21 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Avatar } from '@/components';
+import type { ChatDisplayMessage } from '@/hooks/useChat';
 import { useTheme } from '@/theme';
-import type { Message } from '@/types/database';
 
 interface ChatMessageBubbleProps {
-  message: Message;
+  message: ChatDisplayMessage;
   isOwnMessage: boolean;
 }
 
-// There's no sender profile join available here (messages only carry
-// sender_id — adding a profile join is a repository change, out of scope
-// for a UI-only pass), so the display name is derived from the real
-// sender_id rather than inventing a name.
-function getDisplayName(senderId: string | null, isOwnMessage: boolean): string {
+// message.sender is joined by the repository (see MessageWithSender) — the
+// display_name is never a raw id. Falls back to "Creator" only if the
+// sender's profile has no display_name, which shouldn't normally happen
+// (onboarding requires one) but can for older data.
+function getDisplayName(message: ChatDisplayMessage, isOwnMessage: boolean): string {
   if (isOwnMessage) return 'You';
-  if (!senderId) return 'Viewer';
-  return `Viewer ${senderId.slice(0, 4).toUpperCase()}`;
+  return message.sender?.display_name?.trim() || 'Creator';
 }
 
 function formatTimestamp(iso: string): string {
@@ -27,7 +26,7 @@ function formatTimestamp(iso: string): string {
 
 function ChatMessageBubbleComponent({ message, isOwnMessage }: ChatMessageBubbleProps) {
   const theme = useTheme();
-  const displayName = getDisplayName(message.sender_id, isOwnMessage);
+  const displayName = getDisplayName(message, isOwnMessage);
 
   return (
     <Animated.View
@@ -37,6 +36,9 @@ function ChatMessageBubbleComponent({ message, isOwnMessage }: ChatMessageBubble
         {
           flexDirection: isOwnMessage ? 'row-reverse' : 'row',
           marginBottom: theme.spacing.lg,
+          // Not-yet-synced messages read as visibly "in flight" rather
+          // than indistinguishable from a confirmed message.
+          opacity: message.pending ? 0.6 : 1,
         },
       ]}
     >
@@ -69,7 +71,7 @@ function ChatMessageBubbleComponent({ message, isOwnMessage }: ChatMessageBubble
               },
             ]}
           >
-            {formatTimestamp(message.created_at)}
+            {message.pending ? 'Sending…' : formatTimestamp(message.created_at)}
           </Text>
         </View>
 

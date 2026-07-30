@@ -14,6 +14,7 @@ import {
 import { usePresence, useStream } from '@/hooks';
 import { useTheme } from '@/theme';
 
+import { HeartReactions } from './_components/HeartReactions';
 import { LiveChatOverlay } from './_components/LiveChatOverlay';
 
 // Video area stays a placeholder (gradient background). No offline queue,
@@ -27,20 +28,16 @@ import { LiveChatOverlay } from './_components/LiveChatOverlay';
 // are untouched — this screen no longer renders features/chat/ChatPanel at
 // all, so nothing here affects the Creator screen's chat surface.
 
-// There's no creator-profile join available on useStream() (adding one is a
-// repository change, out of scope for a UI-only pass), so the creator label
-// is derived from the real creator_id rather than inventing a name.
-function getCreatorLabel(creatorId: string): string {
-  return `Streamer ${creatorId.slice(0, 4).toUpperCase()}`;
-}
-
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const router = useRouter();
   const { data: stream, isPending, isError, refetch } = useStream(id);
   const presence = usePresence(id);
-  const creatorLabel = stream ? getCreatorLabel(stream.creator_id) : '';
+  // display_name only — never fall back to username (it's UUID-derived,
+  // e.g. "user_3f8a9b2c", exactly the anonymous-looking id this screen is
+  // meant to avoid showing).
+  const creatorLabel = stream?.creator?.display_name?.trim() || 'Creator';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -186,6 +183,10 @@ export default function ViewerScreen() {
             </Animated.View>
           )}
         </View>
+
+        {/* Local UI effect only — see HeartReactions. Rendered only once a
+            stream is actually loaded, same gate as the chat overlay. */}
+        {stream ? <HeartReactions /> : null}
       </SafeAreaView>
     </View>
   );

@@ -3,7 +3,8 @@ import { useRouter } from 'expo-router';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { Avatar, Card, LiveBadge } from '@/components';
+import { Avatar, Card, LiveBadge, ViewerCountBadge } from '@/components';
+import { usePresence } from '@/hooks';
 import { useTheme } from '@/theme';
 import type { StreamWithCreator } from '@/types/database';
 
@@ -38,7 +39,15 @@ interface StreamCardProps {
 export function StreamCard({ stream, index, featured = false }: StreamCardProps) {
   const theme = useTheme();
   const router = useRouter();
-  const creatorName = stream.creator?.display_name ?? stream.creator?.username ?? 'Streamer';
+  // display_name only — never fall back to username (it's UUID-derived,
+  // e.g. "user_3f8a9b2c", exactly the anonymous-looking id this card is
+  // meant to avoid showing).
+  const creatorName = stream.creator?.display_name?.trim() || 'Creator';
+  const category = stream.category || 'General';
+  // Reuses the same per-stream presence registry the Viewer/Creator
+  // screens join (services/presence.ts dedupes by stream id) — this does
+  // not change viewer-count logic, only surfaces the existing count here.
+  const presence = usePresence(stream.id);
   const cardRadius = featured ? theme.radius.xl : theme.radius.lg;
 
   const card = (
@@ -94,17 +103,18 @@ export function StreamCard({ stream, index, featured = false }: StreamCardProps)
                 { color: theme.colors.textSecondary, fontWeight: theme.fontWeight.medium },
               ]}
             >
-              {creatorName}
+              {`by ${creatorName}`}
             </Text>
-            {/* Always rendered (even empty) so every card reserves the same
-                height whether or not its stream has a description. */}
             <Text
               numberOfLines={1}
               style={[theme.typography.label, { color: theme.colors.textMuted }]}
             >
-              {stream.description ?? ''}
+              {category}
             </Text>
           </View>
+        </View>
+        <View style={{ marginTop: theme.spacing.sm }}>
+          <ViewerCountBadge count={presence.viewerCount} />
         </View>
       </View>
     </Card>

@@ -1,18 +1,18 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import {
   AppHeader,
-  ErrorView,
   LiveBadge,
-  LoadingView,
   PrimaryButton,
   ScreenContainer,
   ViewerCountBadge,
 } from '@/components';
 import { ChatPanel } from '@/features/chat';
+import { type GoLiveInput, GoLiveModal } from '@/features/creator';
 import { useAnonymousAuth, useCreateStream, useEndStream, usePresence } from '@/hooks';
 import { useTheme } from '@/theme';
 
@@ -36,20 +36,27 @@ export default function CreatorScreen() {
   const createStream = useCreateStream();
   const endStream = useEndStream();
 
+  const [isGoLiveVisible, setIsGoLiveVisible] = useState(false);
+
   const activeStream = createStream.data ?? null;
   // Called unconditionally, above the idle/live branch below (Rules of
   // Hooks) — usePresence accepts null and simply doesn't join until a
   // stream actually exists.
   const presence = usePresence(activeStream?.id ?? null);
 
-  const handleStart = () => {
+  const handleGoLiveSubmit = ({ title, category }: GoLiveInput) => {
     // session is always set here: the root AuthGate blocks rendering any
     // screen until anonymous sign-in succeeds.
     if (!session) return;
-    const input = { creator_id: session.user.id, title: 'Live Stream' };
-    console.log(session.user.id);
-    console.log(input);
-    createStream.mutate(input, { onSuccess: (stream) => router.push(`/viewer/${stream.id}`) });
+    createStream.mutate(
+      { creator_id: session.user.id, title, category },
+      {
+        onSuccess: (stream) => {
+          setIsGoLiveVisible(false);
+          router.push(`/viewer/${stream.id}`);
+        },
+      },
+    );
   };
 
   const handleEnd = () => {
@@ -110,19 +117,16 @@ export default function CreatorScreen() {
           entering={FadeInUp.duration(450).delay(120)}
           style={{ marginTop: theme.spacing.xl }}
         >
-          {createStream.isPending ? (
-            <LoadingView message="Starting stream..." />
-          ) : createStream.isError ? (
-            <ErrorView
-              title="Couldn't start stream"
-              description={createStream.error.message}
-              actionLabel="Retry"
-              onAction={handleStart}
-            />
-          ) : (
-            <PrimaryButton label="Start Stream" onPress={handleStart} />
-          )}
+          <PrimaryButton label="Start Stream" onPress={() => setIsGoLiveVisible(true)} />
         </Animated.View>
+
+        <GoLiveModal
+          visible={isGoLiveVisible}
+          isSubmitting={createStream.isPending}
+          errorMessage={createStream.isError ? createStream.error.message : null}
+          onClose={() => setIsGoLiveVisible(false)}
+          onSubmit={handleGoLiveSubmit}
+        />
       </ScreenContainer>
     );
   }

@@ -10,7 +10,7 @@ export type Stream = Tables<'streams'>;
 export type StreamStatus = Stream['status'];
 export type StartStreamInput = Pick<
   TablesInsert<'streams'>,
-  'creator_id' | 'title' | 'description' | 'playback_url' | 'thumbnail_url'
+  'creator_id' | 'title' | 'description' | 'category' | 'playback_url' | 'thumbnail_url'
 >;
 
 // Stream with its creator's profile embedded — what StreamRepository.listLive()
@@ -25,3 +25,13 @@ export type SendMessageInput = Pick<
   TablesInsert<'messages'>,
   'stream_id' | 'sender_id' | 'content' | 'client_id' | 'client_created_at'
 >;
+
+// Message with its sender's profile embedded — same reasoning as
+// StreamWithCreator: rendering a chat message needs the sender's display
+// name, not a per-message profile fetch. Realtime INSERT payloads can't
+// carry this join (Postgres Changes only echoes raw row columns), so it's
+// only populated by ChatRepository.listByStream()/send(); services/chatRealtime.ts
+// backfills it for realtime messages via a cached profile lookup instead.
+export type MessageWithSender = Message & {
+  sender: Pick<Profile, 'username' | 'display_name' | 'avatar_url'> | null;
+};
