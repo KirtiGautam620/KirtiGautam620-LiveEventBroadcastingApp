@@ -1,8 +1,8 @@
 import { FlashList, type FlashListRef, type ListRenderItemInfo } from '@shopify/flash-list';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { EmptyState, ErrorView, LoadingView } from '@/components';
+import { AnimatedPressable, EmptyState, ErrorView, LoadingView } from '@/components';
 import { useChat } from '@/hooks';
 import { useTheme } from '@/theme';
 import type { Message } from '@/types/database';
@@ -18,6 +18,9 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
   const { messages, currentUserId, isLoading, isError, refetch, sendMessage, isSending } =
     useChat(streamId);
   const [draft, setDraft] = useState('');
+  // Presentation-only: highlights the input on focus. Doesn't touch the
+  // chat send/receive flow.
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const listRef = useRef<FlashListRef<Message>>(null);
 
   useEffect(() => {
@@ -38,8 +41,12 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
   // FlashList recycles/measures based on prop identity more aggressively
   // than a plain View — a fresh object every render here is worth avoiding.
   const contentContainerStyle = useMemo(
-    () => ({ paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.sm }),
-    [theme.spacing.md, theme.spacing.sm],
+    () => ({
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.sm,
+    }),
+    [theme.spacing.lg, theme.spacing.md, theme.spacing.sm],
   );
 
   const handleSend = useCallback(() => {
@@ -47,6 +54,9 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
     sendMessage(draft);
     setDraft('');
   }, [draft, sendMessage]);
+
+  const handleFocus = useCallback(() => setIsInputFocused(true), []);
+  const handleBlur = useCallback(() => setIsInputFocused(false), []);
 
   const canSend = draft.trim().length > 0 && !isSending;
 
@@ -83,16 +93,21 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
           {
             backgroundColor: theme.colors.overlay,
             borderRadius: theme.radius.full,
-            paddingHorizontal: theme.spacing.md,
-            paddingVertical: theme.spacing.sm,
-            marginHorizontal: theme.spacing.md,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: isInputFocused ? theme.colors.accent : theme.colors.border,
+            paddingHorizontal: theme.spacing.lg,
+            marginHorizontal: theme.spacing.lg,
             marginTop: theme.spacing.sm,
+            marginBottom: theme.spacing.sm,
+            ...theme.shadows.sm,
           },
         ]}
       >
         <TextInput
           value={draft}
           onChangeText={setDraft}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           placeholder="Say something..."
           placeholderTextColor={theme.colors.textMuted}
           style={[theme.typography.body, { color: theme.colors.textPrimary, flex: 1 }]}
@@ -100,7 +115,7 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
           onSubmitEditing={handleSend}
           returnKeyType="send"
         />
-        <Pressable
+        <AnimatedPressable
           onPress={handleSend}
           disabled={!canSend}
           style={[
@@ -109,11 +124,12 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
               backgroundColor: theme.colors.accent,
               borderRadius: theme.radius.full,
               opacity: canSend ? 1 : 0.5,
+              ...theme.shadows.sm,
             },
           ]}
         >
           <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>➤</Text>
-        </Pressable>
+        </AnimatedPressable>
       </View>
     </View>
   );
@@ -128,6 +144,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   listArea: { flex: 1 },
   emptyWrapper: { flex: 1, justifyContent: 'center' },
-  inputBar: { flexDirection: 'row', alignItems: 'center' },
-  sendButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  inputBar: { flexDirection: 'row', alignItems: 'center', height: 48 },
+  sendButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });
