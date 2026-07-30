@@ -12,7 +12,7 @@ import {
   ScreenContainer,
   ViewerCountBadge,
 } from '@/components';
-import { useAnonymousAuth, useCreateStream, useEndStream } from '@/hooks';
+import { useAnonymousAuth, useCreateStream, useEndStream, usePresence } from '@/hooks';
 import { useTheme } from '@/theme';
 
 const MOCK_CHAT = [
@@ -21,9 +21,9 @@ const MOCK_CHAT = [
   { id: '3', name: 'Priya', message: "let's goo" },
 ];
 
-// Video area stays a placeholder View (no real playback yet). No chat,
-// presence, or offline-queue logic implemented — chat below is still the
-// same static mock content from Step 5.
+// Video area stays a placeholder View (no real playback yet). No chat or
+// offline-queue logic implemented — chat below is still the same static
+// mock content from Step 5. Viewer count is real (Realtime Presence).
 export default function CreatorScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -32,6 +32,10 @@ export default function CreatorScreen() {
   const endStream = useEndStream();
 
   const activeStream = createStream.data ?? null;
+  // Called unconditionally, above the idle/live branch below (Rules of
+  // Hooks) — usePresence accepts null and simply doesn't join until a
+  // stream actually exists.
+  const presence = usePresence(activeStream?.id ?? null);
 
   const handleStart = () => {
     // session is always set here: the root AuthGate blocks rendering any
@@ -97,7 +101,7 @@ export default function CreatorScreen() {
         />
         <View style={[styles.overlayRow, { padding: theme.spacing.md }]}>
           <LiveBadge />
-          <ViewerCountBadge count={842} />
+          <ViewerCountBadge count={presence.viewerCount} />
         </View>
       </Animated.View>
 

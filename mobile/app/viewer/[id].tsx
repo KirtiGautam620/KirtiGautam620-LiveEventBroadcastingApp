@@ -5,7 +5,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, EmptyState, ErrorView, LoadingView, ViewerCountBadge } from '@/components';
-import { useStream } from '@/hooks';
+import { usePresence, useStream } from '@/hooks';
 import { useTheme } from '@/theme';
 
 const MOCK_CHAT = [
@@ -15,14 +15,15 @@ const MOCK_CHAT = [
   { id: '4', name: 'Devon', message: 'where are you streaming from?' },
 ];
 
-// Video area stays a placeholder (gradient background). No chat, presence,
-// offline queue, or realtime subscriptions implemented — chat below is
-// still the same static mock content from Step 5.
+// Video area stays a placeholder (gradient background). No chat or offline
+// queue implemented — chat below is still the same static mock content
+// from Step 5. Viewer count is real (Realtime Presence).
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const router = useRouter();
   const { data: stream, isPending, isError, refetch } = useStream(id);
+  const presence = usePresence(id);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -51,7 +52,7 @@ export default function ViewerScreen() {
               ←
             </Text>
           </Pressable>
-          <ViewerCountBadge count={1204} />
+          <ViewerCountBadge count={presence.viewerCount} />
         </View>
 
         {isPending ? (
