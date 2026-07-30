@@ -29,6 +29,14 @@ import { useTheme } from '@/theme';
 // spec calls for exactly 24px on this screen's preview card specifically.
 const PREVIEW_RADIUS = 24;
 
+// ScreenContainer below only requests the 'top' safe-area edge, not
+// 'bottom': this screen renders inside the (tabs) navigator's content
+// area, which sits above the tab bar and never reaches the physical
+// bottom of the device — useSafeAreaInsets() returns the same
+// window-level bottom inset everywhere, so adding it here too would
+// double it up on top of the tab bar's own bottom inset padding (see
+// app/(tabs)/_layout.tsx).
+
 export default function CreatorScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -66,7 +74,7 @@ export default function CreatorScreen() {
 
   if (!activeStream) {
     return (
-      <ScreenContainer edges={['top', 'bottom']} style={{ paddingHorizontal: theme.spacing.lg }}>
+      <ScreenContainer edges={['top']} style={{ paddingHorizontal: theme.spacing.lg }}>
         <AppHeader
           title="Go Live"
           subtitle="Start broadcasting and connect with your audience in real time."
@@ -132,7 +140,7 @@ export default function CreatorScreen() {
   }
 
   return (
-    <ScreenContainer edges={['top', 'bottom']} style={{ padding: theme.spacing.lg }}>
+    <ScreenContainer edges={['top']} style={{ padding: theme.spacing.lg }}>
       <Animated.View
         entering={FadeIn.duration(400)}
         style={[styles.preview, { borderRadius: PREVIEW_RADIUS, ...theme.shadows.lg }]}

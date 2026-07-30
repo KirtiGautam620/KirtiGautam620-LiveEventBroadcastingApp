@@ -8,6 +8,18 @@ export async function getSession(): Promise<Session | null> {
   return data.session;
 }
 
+// getSession() only reads whatever's cached in local storage — it does not
+// contact the server, so it can return a session whose access token is no
+// longer valid there (revoked, or persisted from before the project's
+// current auth config/keys) without ever knowing. getUser() makes a real
+// authenticated request, so it's what actually confirms the token still
+// works before every subsequent write (e.g. the display-name save) relies
+// on it.
+export async function isSessionValid(): Promise<boolean> {
+  const { error } = await supabase.auth.getUser();
+  return !error;
+}
+
 let inFlightSignIn: Promise<Session> | null = null;
 
 // Deduplicates concurrent callers (e.g. more than one mounted

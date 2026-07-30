@@ -116,7 +116,12 @@ export function DisplayNameScreen({ userId }: DisplayNameScreenProps) {
                   { color: theme.colors.danger, marginTop: theme.spacing.sm },
                 ]}
               >
-                {"Couldn't save your name. Please try again."}
+                {/* The full Supabase error (see profileRepository.update's
+                    console.error for the machine-readable version with
+                    code/details/hint) is shown here too, not just logged —
+                    this is a one-time onboarding step, not a place where a
+                    generic "try again" is enough to actually get unstuck. */}
+                {`Couldn't save your name: ${updateDisplayName.error.message}`}
               </Text>
             ) : null}
           </Animated.View>

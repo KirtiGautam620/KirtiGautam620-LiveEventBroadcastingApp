@@ -33,11 +33,17 @@ export default function ViewerScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { data: stream, isPending, isError, refetch } = useStream(id);
-  const presence = usePresence(id);
+  // Gated on the stream actually being live (not just this screen being
+  // mounted) — useStream's realtime subscription updates `stream.status`
+  // the moment the creator ends the stream, which flips this to null and
+  // makes usePresence leave the channel instead of staying tracked on a
+  // stream that's no longer live.
+  const presence = usePresence(stream?.status === 'live' ? id : null);
   // display_name only — never fall back to username (it's UUID-derived,
   // e.g. "user_3f8a9b2c", exactly the anonymous-looking id this screen is
   // meant to avoid showing).
   const creatorLabel = stream?.creator?.display_name?.trim() || 'Creator';
+  const hasEnded = stream?.status === 'ended';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -60,133 +66,175 @@ export default function ViewerScreen() {
       />
 
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-        <View
-          style={[
-            styles.topOverlay,
-            { paddingHorizontal: theme.spacing.md, marginTop: theme.spacing.sm },
-          ]}
-        >
-          <View style={styles.topOverlayLeft}>
-            {stream ? <Avatar name={creatorLabel} size={32} /> : null}
-            <View style={{ marginLeft: theme.spacing.sm, flexShrink: 1 }}>
-              <View style={styles.creatorRow}>
-                {stream ? (
-                  <Text
-                    numberOfLines={1}
-                    style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}
-                  >
-                    {creatorLabel}
-                  </Text>
-                ) : null}
-                <View style={{ marginLeft: theme.spacing.sm }}>
-                  <LiveBadge />
+        {hasEnded ? (
+          // Full-screen, replaces all "live" chrome (badge, viewer count,
+          // chat, heart reactions) rather than just swapping out the
+          // bottom section — none of it is meaningful once the stream has
+          // ended. Reached automatically: useStream()'s realtime
+          // subscription flips stream.status to 'ended' the moment the
+          // creator ends the stream, no manual refresh involved.
+          <Animated.View
+            entering={SlideInUp.duration(350)}
+            style={[styles.centeredState, { paddingHorizontal: theme.spacing.lg }]}
+          >
+            <Text
+              style={[
+                theme.typography.heading1,
+                { color: theme.colors.textPrimary, textAlign: 'center' },
+              ]}
+            >
+              This stream has ended
+            </Text>
+            <Text
+              style={[
+                theme.typography.body,
+                {
+                  color: theme.colors.textSecondary,
+                  textAlign: 'center',
+                  marginTop: theme.spacing.sm,
+                },
+              ]}
+            >
+              Thanks for watching. Check out what else is live right now.
+            </Text>
+            <View style={{ marginTop: theme.spacing.xl, alignSelf: 'stretch' }}>
+              <PrimaryButton label="Back to Browse" onPress={() => router.replace('/')} />
+            </View>
+          </Animated.View>
+        ) : (
+          <>
+            <View
+              style={[
+                styles.topOverlay,
+                { paddingHorizontal: theme.spacing.md, marginTop: theme.spacing.sm },
+              ]}
+            >
+              <View style={styles.topOverlayLeft}>
+                {stream ? <Avatar name={creatorLabel} size={32} /> : null}
+                <View style={{ marginLeft: theme.spacing.sm, flexShrink: 1 }}>
+                  <View style={styles.creatorRow}>
+                    {stream ? (
+                      <Text
+                        numberOfLines={1}
+                        style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}
+                      >
+                        {creatorLabel}
+                      </Text>
+                    ) : null}
+                    <View style={{ marginLeft: theme.spacing.sm }}>
+                      <LiveBadge />
+                    </View>
+                  </View>
+                  <View style={{ marginTop: theme.spacing.xs }}>
+                    <ViewerCountBadge count={presence.viewerCount} />
+                  </View>
+                  {stream ? (
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        theme.typography.caption,
+                        { color: theme.colors.textSecondary, marginTop: theme.spacing.xs },
+                      ]}
+                    >
+                      {stream.title}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
-              <View style={{ marginTop: theme.spacing.xs }}>
-                <ViewerCountBadge count={presence.viewerCount} />
-              </View>
-              {stream ? (
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    theme.typography.caption,
-                    { color: theme.colors.textSecondary, marginTop: theme.spacing.xs },
-                  ]}
-                >
-                  {stream.title}
+
+              <AnimatedPressable
+                onPress={() => router.back()}
+                style={[
+                  styles.iconButton,
+                  { backgroundColor: theme.colors.overlay, borderRadius: theme.radius.full },
+                ]}
+              >
+                <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
+                  ✕
                 </Text>
-              ) : null}
+              </AnimatedPressable>
             </View>
-          </View>
 
-          <AnimatedPressable
-            onPress={() => router.back()}
-            style={[
-              styles.iconButton,
-              { backgroundColor: theme.colors.overlay, borderRadius: theme.radius.full },
-            ]}
-          >
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-              ✕
-            </Text>
-          </AnimatedPressable>
-        </View>
+            <View style={styles.spacer}>
+              {isPending ? (
+                <View style={styles.pendingState}>
+                  <ActivityIndicator color={theme.colors.textPrimary} />
+                  <Text
+                    style={[
+                      theme.typography.caption,
+                      { color: theme.colors.textSecondary, marginTop: theme.spacing.sm },
+                    ]}
+                  >
+                    Loading stream...
+                  </Text>
+                </View>
+              ) : isError ? (
+                <View style={[styles.pendingState, { paddingHorizontal: theme.spacing.lg }]}>
+                  <Text
+                    style={[
+                      theme.typography.bodyStrong,
+                      { color: theme.colors.textPrimary, textAlign: 'center' },
+                    ]}
+                  >
+                    {"Couldn't load stream"}
+                  </Text>
+                  <Text
+                    style={[
+                      theme.typography.caption,
+                      {
+                        color: theme.colors.textSecondary,
+                        textAlign: 'center',
+                        marginTop: theme.spacing.xs,
+                      },
+                    ]}
+                  >
+                    Something went wrong while loading this stream.
+                  </Text>
+                  <View style={{ marginTop: theme.spacing.md, alignSelf: 'stretch' }}>
+                    <PrimaryButton label="Retry" onPress={() => void refetch()} />
+                  </View>
+                </View>
+              ) : !stream ? (
+                <View style={[styles.centeredState, { paddingHorizontal: theme.spacing.lg }]}>
+                  <Text
+                    style={[
+                      theme.typography.bodyStrong,
+                      { color: theme.colors.textPrimary, textAlign: 'center' },
+                    ]}
+                  >
+                    Stream not found
+                  </Text>
+                  <Text
+                    style={[
+                      theme.typography.caption,
+                      {
+                        color: theme.colors.textSecondary,
+                        textAlign: 'center',
+                        marginTop: theme.spacing.xs,
+                      },
+                    ]}
+                  >
+                    This stream may have ended or the link is invalid.
+                  </Text>
+                </View>
+              ) : (
+                <Animated.View
+                  entering={SlideInUp.duration(350)}
+                  style={{ paddingBottom: theme.spacing.sm }}
+                >
+                  <LiveChatOverlay streamId={stream.id} />
+                </Animated.View>
+              )}
+            </View>
 
-        <View style={styles.spacer}>
-          {isPending ? (
-            <View style={styles.pendingState}>
-              <ActivityIndicator color={theme.colors.textPrimary} />
-              <Text
-                style={[
-                  theme.typography.caption,
-                  { color: theme.colors.textSecondary, marginTop: theme.spacing.sm },
-                ]}
-              >
-                Loading stream...
-              </Text>
-            </View>
-          ) : isError ? (
-            <View style={[styles.pendingState, { paddingHorizontal: theme.spacing.lg }]}>
-              <Text
-                style={[
-                  theme.typography.bodyStrong,
-                  { color: theme.colors.textPrimary, textAlign: 'center' },
-                ]}
-              >
-                {"Couldn't load stream"}
-              </Text>
-              <Text
-                style={[
-                  theme.typography.caption,
-                  {
-                    color: theme.colors.textSecondary,
-                    textAlign: 'center',
-                    marginTop: theme.spacing.xs,
-                  },
-                ]}
-              >
-                Something went wrong while loading this stream.
-              </Text>
-              <View style={{ marginTop: theme.spacing.md, alignSelf: 'stretch' }}>
-                <PrimaryButton label="Retry" onPress={() => void refetch()} />
-              </View>
-            </View>
-          ) : !stream ? (
-            <View style={[styles.centeredState, { paddingHorizontal: theme.spacing.lg }]}>
-              <Text
-                style={[
-                  theme.typography.bodyStrong,
-                  { color: theme.colors.textPrimary, textAlign: 'center' },
-                ]}
-              >
-                Stream not found
-              </Text>
-              <Text
-                style={[
-                  theme.typography.caption,
-                  {
-                    color: theme.colors.textSecondary,
-                    textAlign: 'center',
-                    marginTop: theme.spacing.xs,
-                  },
-                ]}
-              >
-                This stream may have ended or the link is invalid.
-              </Text>
-            </View>
-          ) : (
-            <Animated.View
-              entering={SlideInUp.duration(350)}
-              style={{ paddingBottom: theme.spacing.sm }}
-            >
-              <LiveChatOverlay streamId={stream.id} />
-            </Animated.View>
-          )}
-        </View>
-
-        {/* Local UI effect only — see HeartReactions. Rendered only once a
-            stream is actually loaded, same gate as the chat overlay. */}
-        {stream ? <HeartReactions /> : null}
+            {/* Local UI effect only — see HeartReactions. Rendered only
+                once a stream is actually loaded, same gate as the chat
+                overlay. Unmounted (along with LiveChatOverlay above) as
+                soon as hasEnded flips true, which is what tears down the
+                chat realtime subscription — see useChat's cleanup. */}
+            {stream ? <HeartReactions /> : null}
+          </>
+        )}
       </SafeAreaView>
     </View>
   );

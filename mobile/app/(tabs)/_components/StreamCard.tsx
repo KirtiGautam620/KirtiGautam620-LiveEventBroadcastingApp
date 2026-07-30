@@ -3,8 +3,7 @@ import { useRouter } from 'expo-router';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { Avatar, Card, LiveBadge, ViewerCountBadge } from '@/components';
-import { usePresence } from '@/hooks';
+import { Avatar, Card, LiveBadge } from '@/components';
 import { useTheme } from '@/theme';
 import type { StreamWithCreator } from '@/types/database';
 
@@ -36,6 +35,14 @@ interface StreamCardProps {
   featured?: boolean;
 }
 
+// Deliberately does not show a live viewer count: that requires joining
+// the stream's presence channel (usePresence), and this card renders on
+// the Browse screen for every visible live stream — merely browsing must
+// never track the viewer as present on a stream they haven't opened.
+// Presence is only ever joined by the Creator screen (while live) and the
+// Viewer screen (while actually watching that stream) — see
+// services/presence.ts.
+
 export function StreamCard({ stream, index, featured = false }: StreamCardProps) {
   const theme = useTheme();
   const router = useRouter();
@@ -44,10 +51,6 @@ export function StreamCard({ stream, index, featured = false }: StreamCardProps)
   // meant to avoid showing).
   const creatorName = stream.creator?.display_name?.trim() || 'Creator';
   const category = stream.category || 'General';
-  // Reuses the same per-stream presence registry the Viewer/Creator
-  // screens join (services/presence.ts dedupes by stream id) — this does
-  // not change viewer-count logic, only surfaces the existing count here.
-  const presence = usePresence(stream.id);
   const cardRadius = featured ? theme.radius.xl : theme.radius.lg;
 
   const card = (
@@ -112,9 +115,6 @@ export function StreamCard({ stream, index, featured = false }: StreamCardProps)
               {category}
             </Text>
           </View>
-        </View>
-        <View style={{ marginTop: theme.spacing.sm }}>
-          <ViewerCountBadge count={presence.viewerCount} />
         </View>
       </View>
     </Card>

@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 
-import { getSession, onAuthStateChange, signInAnonymously } from '@/services/auth';
+import { getSession, isSessionValid, onAuthStateChange, signInAnonymously } from '@/services/auth';
 
 export interface UseAnonymousAuthResult {
   session: Session | null;
@@ -32,7 +32,15 @@ export function useAnonymousAuth(): UseAnonymousAuthResult {
 
       try {
         const existing = await getSession();
-        if (existing) {
+        // A session restored from storage can be structurally present but
+        // no longer valid server-side (revoked, or persisted from before
+        // the project's current auth config) — getSession() alone can't
+        // tell the difference. Trusting it anyway would mean every
+        // subsequent authenticated request (including saving a display
+        // name) fails silently for the rest of the app's lifetime, since
+        // nothing else in this flow ever re-attempts sign-in once session
+        // is non-null.
+        if (existing && (await isSessionValid())) {
           if (!cancelled) {
             setSession(existing);
             setIsLoading(false);
@@ -40,8 +48,9 @@ export function useAnonymousAuth(): UseAnonymousAuthResult {
           return;
         }
       } catch {
-        // Reading the persisted session failed (e.g. corrupted storage) —
-        // fall through to a fresh anonymous sign-in rather than getting stuck.
+        // Reading or validating the persisted session failed (e.g.
+        // corrupted storage, or a network error during validation) — fall
+        // through to a fresh anonymous sign-in rather than getting stuck.
       }
 
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
