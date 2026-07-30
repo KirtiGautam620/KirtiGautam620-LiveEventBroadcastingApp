@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, ViewerCountBadge } from '@/components';
+import { Avatar, EmptyState, ErrorView, LoadingView, ViewerCountBadge } from '@/components';
+import { useStream } from '@/hooks';
 import { useTheme } from '@/theme';
 
 const MOCK_CHAT = [
@@ -14,12 +15,14 @@ const MOCK_CHAT = [
   { id: '4', name: 'Devon', message: 'where are you streaming from?' },
 ];
 
-// Placeholder: design-system + navigation skeleton only. Video playback and
-// real chat land in later steps — messages and the input bar are static.
+// Video area stays a placeholder (gradient background). No chat, presence,
+// offline queue, or realtime subscriptions implemented — chat below is
+// still the same static mock content from Step 5.
 export default function ViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const router = useRouter();
+  const { data: stream, isPending, isError, refetch } = useStream(id);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -51,72 +54,92 @@ export default function ViewerScreen() {
           <ViewerCountBadge count={1204} />
         </View>
 
-        <Text
-          style={[
-            theme.typography.caption,
-            { color: theme.colors.textMuted, textAlign: 'center', marginTop: theme.spacing.lg },
-          ]}
-        >
-          Stream {id}
-        </Text>
+        {isPending ? (
+          <LoadingView message="Loading stream..." />
+        ) : isError ? (
+          <ErrorView
+            title="Couldn't load stream"
+            description="Something went wrong while loading this stream."
+            actionLabel="Retry"
+            onAction={() => void refetch()}
+          />
+        ) : !stream ? (
+          <View style={styles.centeredContent}>
+            <EmptyState
+              title="Stream not found"
+              description="This stream may have ended or the link is invalid."
+            />
+          </View>
+        ) : (
+          <>
+            <Text
+              style={[
+                theme.typography.caption,
+                { color: theme.colors.textMuted, textAlign: 'center', marginTop: theme.spacing.lg },
+              ]}
+            >
+              {stream.title}
+            </Text>
 
-        <View style={styles.spacer} />
+            <View style={styles.spacer} />
 
-        <Animated.View
-          entering={FadeIn.duration(400)}
-          style={{ paddingHorizontal: theme.spacing.md }}
-        >
-          {MOCK_CHAT.map((entry) => (
-            <View key={entry.id} style={[styles.chatRow, { marginBottom: theme.spacing.sm }]}>
-              <Avatar name={entry.name} size={22} />
+            <Animated.View
+              entering={FadeIn.duration(400)}
+              style={{ paddingHorizontal: theme.spacing.md }}
+            >
+              {MOCK_CHAT.map((entry) => (
+                <View key={entry.id} style={[styles.chatRow, { marginBottom: theme.spacing.sm }]}>
+                  <Avatar name={entry.name} size={22} />
+                  <View
+                    style={[
+                      styles.chatBubble,
+                      {
+                        backgroundColor: theme.colors.overlay,
+                        borderRadius: theme.radius.md,
+                        marginLeft: theme.spacing.xs,
+                        padding: theme.spacing.sm,
+                      },
+                    ]}
+                  >
+                    <Text style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>
+                      <Text style={theme.typography.label}>{entry.name} </Text>
+                      {entry.message}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </Animated.View>
+
+            <Animated.View
+              entering={FadeIn.duration(400).delay(100)}
+              style={[
+                styles.inputBar,
+                {
+                  backgroundColor: theme.colors.overlay,
+                  borderRadius: theme.radius.full,
+                  marginHorizontal: theme.spacing.md,
+                  marginTop: theme.spacing.sm,
+                  paddingHorizontal: theme.spacing.md,
+                  paddingVertical: theme.spacing.sm,
+                },
+              ]}
+            >
+              <Text style={[theme.typography.body, { color: theme.colors.textMuted, flex: 1 }]}>
+                Say something...
+              </Text>
               <View
                 style={[
-                  styles.chatBubble,
-                  {
-                    backgroundColor: theme.colors.overlay,
-                    borderRadius: theme.radius.md,
-                    marginLeft: theme.spacing.xs,
-                    padding: theme.spacing.sm,
-                  },
+                  styles.sendButton,
+                  { backgroundColor: theme.colors.accent, borderRadius: theme.radius.full },
                 ]}
               >
-                <Text style={[theme.typography.caption, { color: theme.colors.textPrimary }]}>
-                  <Text style={theme.typography.label}>{entry.name} </Text>
-                  {entry.message}
+                <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
+                  ➤
                 </Text>
               </View>
-            </View>
-          ))}
-        </Animated.View>
-
-        <Animated.View
-          entering={FadeIn.duration(400).delay(100)}
-          style={[
-            styles.inputBar,
-            {
-              backgroundColor: theme.colors.overlay,
-              borderRadius: theme.radius.full,
-              marginHorizontal: theme.spacing.md,
-              marginTop: theme.spacing.sm,
-              paddingHorizontal: theme.spacing.md,
-              paddingVertical: theme.spacing.sm,
-            },
-          ]}
-        >
-          <Text style={[theme.typography.body, { color: theme.colors.textMuted, flex: 1 }]}>
-            Say something...
-          </Text>
-          <View
-            style={[
-              styles.sendButton,
-              { backgroundColor: theme.colors.accent, borderRadius: theme.radius.full },
-            ]}
-          >
-            <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-              ➤
-            </Text>
-          </View>
-        </Animated.View>
+            </Animated.View>
+          </>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -128,6 +151,7 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iconButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   spacer: { flex: 1 },
+  centeredContent: { flex: 1, justifyContent: 'center' },
   chatRow: { flexDirection: 'row', alignItems: 'flex-start' },
   chatBubble: { flex: 1 },
   inputBar: { flexDirection: 'row', alignItems: 'center' },
