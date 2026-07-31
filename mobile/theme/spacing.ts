@@ -1,10 +1,9 @@
+// Strict 8-point scale — every value is a multiple of 8, nothing in between.
 export const spacing = {
-  none: 0,
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
-  xxxl: 48,
+  xs: 8,
+  sm: 16,
+  md: 24,
+  lg: 32,
+  xl: 40,
+  xxl: 48,
 } as const;

@@ -9,16 +9,23 @@ import { AnimatedPressable } from './AnimatedPressable';
 interface CardProps extends PropsWithChildren {
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  // Optional: when a pressable Card's content is more than one short line
+  // (e.g. a stream's title + creator + category all read separately by
+  // default), this gives screen readers one coherent announcement instead
+  // of several fragments.
+  accessibilityLabel?: string;
 }
 
-export function Card({ children, onPress, style }: CardProps) {
+export function Card({ children, onPress, style, accessibilityLabel }: CardProps) {
   const theme = useTheme();
   const cardStyle = [
     styles.base,
     {
       backgroundColor: theme.colors.surface,
-      borderRadius: theme.radius.lg,
-      padding: theme.spacing.md,
+      borderRadius: theme.radius.xl,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.sm,
       ...theme.shadows.md,
     },
     style,
@@ -26,7 +33,12 @@ export function Card({ children, onPress, style }: CardProps) {
 
   if (onPress) {
     return (
-      <AnimatedPressable onPress={onPress} style={cardStyle}>
+      <AnimatedPressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        style={cardStyle}
+      >
         {children}
       </AnimatedPressable>
     );

@@ -2,18 +2,21 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { palette, useTheme } from '@/theme';
 
+// Drawn from the app's own accent palette plus a couple of complementary
+// hues, so generated avatars feel like part of the same system rather than
+// arbitrary colors.
 const AVATAR_COLORS = [
-  palette.accent,
-  '#E67E22',
-  '#16A085',
-  '#2980B9',
-  '#C0392B',
-  '#8E44AD',
+  palette.purple,
+  palette.pink,
+  palette.blue,
+  palette.emerald,
+  '#F59E0B',
+  '#14B8A6',
 ] as const;
 
 function colorForName(name: string): string {
   const hash = Array.from(name).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length] ?? palette.accent;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length] ?? palette.purple;
 }
 
 interface AvatarProps {
@@ -25,15 +28,26 @@ interface AvatarProps {
 export function Avatar({ name, uri, size = 40 }: AvatarProps) {
   const theme = useTheme();
   const dimensionStyle = { width: size, height: size, borderRadius: size / 2 };
+  const ringStyle = {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.glassBorder,
+  };
 
   if (uri) {
-    return <Image source={{ uri }} style={dimensionStyle} />;
+    return <Image source={{ uri }} style={[dimensionStyle, ringStyle]} />;
   }
 
   const initial = name.trim().charAt(0).toUpperCase() || '?';
 
   return (
-    <View style={[styles.placeholder, dimensionStyle, { backgroundColor: colorForName(name) }]}>
+    <View
+      style={[
+        styles.placeholder,
+        dimensionStyle,
+        ringStyle,
+        { backgroundColor: colorForName(name) },
+      ]}
+    >
       <Text
         style={[
           theme.typography.bodyStrong,

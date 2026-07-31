@@ -1,26 +1,43 @@
+import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme';
 
 import { PrimaryButton } from './PrimaryButton';
 
+const ICON_CIRCLE_SIZE = 64;
+
 interface ErrorViewProps {
   title: string;
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  icon?: keyof typeof Ionicons.glyphMap;
 }
 
-export function ErrorView({ title, description, actionLabel, onAction }: ErrorViewProps) {
+export function ErrorView({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  icon = 'alert-circle-outline',
+}: ErrorViewProps) {
   const theme = useTheme();
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background, padding: theme.spacing.lg },
-      ]}
-    >
+    <View style={[styles.container, { padding: theme.spacing.lg }]}>
+      <View
+        style={[
+          styles.iconCircle,
+          {
+            backgroundColor: theme.colors.surfaceElevated,
+            borderColor: theme.colors.border,
+            marginBottom: theme.spacing.md,
+          },
+        ]}
+      >
+        <Ionicons name={icon} size={28} color={theme.colors.danger} />
+      </View>
       <Text
         style={[
           theme.typography.heading2,
@@ -32,15 +49,15 @@ export function ErrorView({ title, description, actionLabel, onAction }: ErrorVi
       {description ? (
         <Text
           style={[
-            theme.typography.body,
-            { color: theme.colors.textSecondary, marginTop: theme.spacing.sm, textAlign: 'center' },
+            theme.typography.caption,
+            { color: theme.colors.textSecondary, marginTop: theme.spacing.xs, textAlign: 'center' },
           ]}
         >
           {description}
         </Text>
       ) : null}
       {actionLabel && onAction ? (
-        <View style={{ marginTop: theme.spacing.xl }}>
+        <View style={{ marginTop: theme.spacing.lg, alignSelf: 'stretch' }}>
           <PrimaryButton label={actionLabel} onPress={onAction} />
         </View>
       ) : null}
@@ -50,4 +67,12 @@ export function ErrorView({ title, description, actionLabel, onAction }: ErrorVi
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  iconCircle: {
+    width: ICON_CIRCLE_SIZE,
+    height: ICON_CIRCLE_SIZE,
+    borderRadius: ICON_CIRCLE_SIZE / 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

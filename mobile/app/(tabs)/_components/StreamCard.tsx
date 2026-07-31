@@ -4,29 +4,16 @@ import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Avatar, Card, LiveBadge } from '@/components';
-import { useTheme } from '@/theme';
+import { thumbnailGradient, useTheme } from '@/theme';
 import type { StreamWithCreator } from '@/types/database';
 
-const THUMBNAIL_GRADIENTS: [string, string][] = [
-  ['#6C5CE7', '#341F97'],
-  ['#FF6B6B', '#C0392B'],
-  ['#00B894', '#00695C'],
-  ['#0984E3', '#1B3B6F'],
-  ['#FD79A8', '#8E2A5B'],
-  ['#FDCB6E', '#B8860B'],
-];
-const DEFAULT_GRADIENT: [string, string] = ['#6C5CE7', '#341F97'];
-// Darkens the bottom edge of every thumbnail slightly so the floating LIVE
-// badge stays legible regardless of which base gradient it sits on.
-const VIGNETTE_GRADIENT: [string, string] = ['transparent', 'rgba(0, 0, 0, 0.45)'];
-
-function gradientForIndex(index: number): [string, string] {
-  return THUMBNAIL_GRADIENTS[index % THUMBNAIL_GRADIENTS.length] ?? DEFAULT_GRADIENT;
-}
-
-// ~72% of the screen width leaves a deliberate peek of the next card in the
-// horizontal Featured Live carousel.
-export const FEATURED_CARD_WIDTH = Math.round(Dimensions.get('window').width * 0.72);
+// ~82% of the screen width leaves a deliberate peek of the next card in the
+// horizontal Featured Live carousel — a hero card, not a compact tile.
+export const FEATURED_CARD_WIDTH = Math.min(
+  340,
+  Math.max(300, Math.round(Dimensions.get('window').width * 0.82)),
+);
+const FEATURED_CARD_HEIGHT = 208;
 const FEATURED_ENTRANCE_STAGGER_MS = 80;
 
 interface StreamCardProps {
@@ -42,7 +29,12 @@ interface StreamCardProps {
 // Presence is only ever joined by the Creator screen (while live) and the
 // Viewer screen (while actually watching that stream) — see
 // services/presence.ts.
-
+//
+// Featured is a full-bleed hero tile (title/creator overlaid on the
+// artwork over a bottom scrim, Instagram/YouTube-hero style). The grid
+// variant is deliberately built the opposite way — thumbnail on top,
+// content in normal flow below it, not overlaid — so the two sections
+// read as structurally different, not just differently sized.
 export function StreamCard({ stream, index, featured = false }: StreamCardProps) {
   const theme = useTheme();
   const router = useRouter();
@@ -51,33 +43,108 @@ export function StreamCard({ stream, index, featured = false }: StreamCardProps)
   // meant to avoid showing).
   const creatorName = stream.creator?.display_name?.trim() || 'Creator';
   const category = stream.category || 'General';
-  const cardRadius = featured ? theme.radius.xl : theme.radius.lg;
+  // One coherent announcement instead of the title/avatar-initial/creator
+  // name/category all reading as separate fragments.
+  const cardLabel = `${stream.title}, live now, by ${creatorName}, ${category}`;
 
-  const card = (
+  const card = featured ? (
     <Card
       onPress={() => router.push(`/viewer/${stream.id}`)}
+      accessibilityLabel={cardLabel}
+      style={{
+        width: FEATURED_CARD_WIDTH,
+        height: FEATURED_CARD_HEIGHT,
+        padding: 0,
+        overflow: 'hidden',
+        ...theme.shadows.xl,
+      }}
+    >
+      <LinearGradient
+        colors={thumbnailGradient(index)}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <LinearGradient
+        colors={theme.gradients.scrimBottom}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.heroScrim}
+      />
+
+      <View style={[styles.heroTopRow, { padding: theme.spacing.sm }]}>
+        <LiveBadge />
+        <View
+          style={[
+            styles.categoryChip,
+            {
+              backgroundColor: theme.colors.overlayStrong,
+              borderRadius: theme.radius.full,
+              // Matches LiveBadge's padding scale exactly — the two badges
+              // share this row, so they should share a padding rhythm.
+              paddingHorizontal: theme.spacing.sm,
+              paddingVertical: theme.spacing.xs,
+            },
+          ]}
+        >
+          <Text numberOfLines={1} style={[theme.typography.label, styles.categoryChipText]}>
+            {category}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[styles.heroBottomContent, { padding: theme.spacing.sm }]}>
+        <Text
+          numberOfLines={2}
+          style={[theme.typography.heading2, styles.heroTitle, { color: theme.colors.textPrimary }]}
+        >
+          {stream.title}
+        </Text>
+        <View style={[styles.meta, { marginTop: theme.spacing.xs }]}>
+          <Avatar name={creatorName} uri={stream.creator?.avatar_url ?? undefined} size={32} />
+          <Text
+            numberOfLines={1}
+            style={[
+              theme.typography.username,
+              styles.heroCreatorName,
+              { marginLeft: theme.spacing.xs },
+            ]}
+          >
+            {creatorName}
+          </Text>
+        </View>
+      </View>
+    </Card>
+  ) : (
+    <Card
+      onPress={() => router.push(`/viewer/${stream.id}`)}
+      accessibilityLabel={cardLabel}
       style={[
-        featured ? styles.featuredCard : styles.gridCard,
+        styles.gridCard,
+        // Card's default border (theme.colors.border, ~6% white) and
+        // shadow.md read as almost nothing against this dark background —
+        // a visibly stronger border + deeper shadow gives these cards
+        // actual definition instead of blending flat into the screen.
         {
-          borderRadius: cardRadius,
-          ...(featured ? theme.shadows.lg : theme.shadows.md),
+          borderColor: theme.colors.glassBorder,
+          borderWidth: 1,
+          ...theme.shadows.lg,
         },
       ]}
     >
-      <View style={[styles.thumbnail, { borderRadius: cardRadius }]}>
+      <View style={[styles.thumbnail, { borderRadius: theme.radius.lg }]}>
         <LinearGradient
-          colors={gradientForIndex(index)}
+          colors={thumbnailGradient(index)}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject}
         />
-        <LinearGradient
-          colors={VIGNETTE_GRADIENT}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <View style={[styles.thumbnailOverlay, { padding: theme.spacing.sm }]}>
+        {/* The featured hero card scrims its LIVE badge corner; the grid
+            thumbnail never did, so the badge's legibility depended on
+            luck of which random gradient landed there. Same treatment,
+            smaller footprint. */}
+        <LinearGradient colors={theme.gradients.scrimTop} style={styles.gridScrim} />
+        <View style={[styles.thumbnailOverlay, { padding: theme.spacing.xs }]}>
           <LiveBadge />
         </View>
       </View>
@@ -86,31 +153,32 @@ export function StreamCard({ stream, index, featured = false }: StreamCardProps)
         <Text
           numberOfLines={2}
           style={[
-            featured ? theme.typography.heading2 : theme.typography.bodyStrong,
-            { color: theme.colors.textPrimary, fontWeight: theme.fontWeight.bold },
+            theme.typography.bodyStrong,
+            styles.gridTitle,
+            { color: theme.colors.textPrimary },
           ]}
         >
           {stream.title}
         </Text>
-        <View style={[styles.meta, { marginTop: theme.spacing.sm }]}>
-          <Avatar
-            name={creatorName}
-            uri={stream.creator?.avatar_url ?? undefined}
-            size={featured ? 32 : 24}
-          />
-          <View style={{ marginLeft: theme.spacing.sm, flex: 1 }}>
+        {/* flex-start, not center: with two stacked lines of metadata next
+            to it, centering made the avatar float between them rather than
+            sit with the creator name it's paired with. */}
+        <View style={[styles.meta, styles.gridMeta, { marginTop: theme.spacing.xs }]}>
+          <Avatar name={creatorName} uri={stream.creator?.avatar_url ?? undefined} size={24} />
+          <View style={{ marginLeft: theme.spacing.xs, flex: 1 }}>
             <Text
               numberOfLines={1}
-              style={[
-                theme.typography.caption,
-                { color: theme.colors.textSecondary, fontWeight: theme.fontWeight.medium },
-              ]}
+              style={[theme.typography.username, { color: theme.colors.textSecondary }]}
             >
-              {`by ${creatorName}`}
+              {creatorName}
             </Text>
             <Text
               numberOfLines={1}
-              style={[theme.typography.label, { color: theme.colors.textMuted }]}
+              style={[
+                theme.typography.label,
+                styles.gridCategory,
+                { color: theme.colors.textMuted },
+              ]}
             >
               {category}
             </Text>
@@ -133,8 +201,18 @@ export function StreamCard({ stream, index, featured = false }: StreamCardProps)
 
 const styles = StyleSheet.create({
   gridCard: { width: '47%' },
-  featuredCard: { width: FEATURED_CARD_WIDTH },
   thumbnail: { aspectRatio: 16 / 9, overflow: 'hidden' },
   thumbnailOverlay: { flex: 1, alignItems: 'flex-start' },
+  gridScrim: { position: 'absolute', left: 0, right: 0, top: 0, height: '55%' },
+  gridTitle: { fontWeight: '700' },
+  gridMeta: { alignItems: 'flex-start' },
+  gridCategory: { marginTop: 2 },
   meta: { flexDirection: 'row', alignItems: 'center' },
+  heroScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, top: '35%' },
+  heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  categoryChip: { maxWidth: '55%' },
+  categoryChipText: { color: '#FFFFFF' },
+  heroBottomContent: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  heroTitle: { fontWeight: '700' },
+  heroCreatorName: { color: 'rgba(255, 255, 255, 0.94)' },
 });

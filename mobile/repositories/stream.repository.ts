@@ -68,8 +68,6 @@ export const streamRepository: StreamRepository = {
     // status defaults to 'live' at the database level (see migration) —
     // deliberately not settable here, starting a stream always means going live.
     const result = await supabase.from('streams').insert(input).select().single();
-    console.log(result.data);
-    console.log(result.error);
     return unwrap(result);
   },
 
@@ -103,15 +101,60 @@ export const streamRepository: StreamRepository = {
   },
 
   subscribeToLiveStreams(onChange) {
+    const refetch = () => {
+      // Refetch on any change rather than reconciling the change payload by
+      // hand — simpler and correct at this data volume, and avoids subtle
+      // ordering bugs from manually merging INSERT/UPDATE/DELETE events.
+      // The .catch() matters: without it, a failed refetch (e.g. a
+      // transient network error) was an unhandled promise rejection that
+      // silently dropped the update — Browse would just never hear about
+      // the change instead of retrying or surfacing anything.
+      streamRepository
+        .listLive()
+        .then(onChange)
+        .catch((error: unknown) => {
+          console.error(
+            '[streamRepository] Failed to refetch live streams after a realtime change',
+            error,
+          );
+        });
+    };
+
+    // Postgres Changes has no replay/backfill: any INSERT/UPDATE/DELETE
+    // that happens while this channel is disconnected (a dropped socket,
+    // an app backgrounded long enough for the connection to be killed,
+    // a transient Realtime-server-side blip — none of which necessarily
+    // means the *device* ever went offline) is simply gone once the
+    // channel reconnects. Rejoining alone does not catch Browse back up.
+    // wasDisconnected tracks that so the moment this channel comes back
+    // to SUBSCRIBED after having been in a bad state, one manual refetch
+    // reconciles whatever was missed — independent of (and a safety net
+    // alongside) useReconnect's broader device-network-transition flow.
+    let wasDisconnected = false;
+
     const channel = supabase
       .channel('streams:list')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'streams' }, () => {
-        // Refetch on any change rather than reconciling the change payload by
-        // hand — simpler and correct at this data volume, and avoids subtle
-        // ordering bugs from manually merging INSERT/UPDATE/DELETE events.
-        void streamRepository.listLive().then(onChange);
-      })
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'streams' }, refetch)
+      .subscribe((status, error) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          wasDisconnected = true;
+          // Logged (not silently ignored) so a subscription that never
+          // reaches SUBSCRIBED — e.g. the streams table not actually being
+          // in the Supabase project's realtime publication, or Realtime
+          // disabled for the project — is visible instead of presenting as
+          // "Browse just never updates" with no clue why.
+          console.error(
+            '[streamRepository] streams:list realtime subscription problem',
+            status,
+            error,
+          );
+          return;
+        }
+        if (status === 'SUBSCRIBED' && wasDisconnected) {
+          wasDisconnected = false;
+          refetch();
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

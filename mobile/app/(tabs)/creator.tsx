@@ -24,10 +24,7 @@ import { useTheme } from '@/theme';
 // Presentation-only pass: layout, spacing, color, typography and entrance
 // animations below. No hooks, business logic, navigation, or ChatPanel
 // internals were touched.
-
-// Outside the theme's radius scale (largest token is xl = 20) — the design
-// spec calls for exactly 24px on this screen's preview card specifically.
-const PREVIEW_RADIUS = 24;
+const SCREEN_PADDING = 24; // theme.spacing.md
 
 // ScreenContainer below only requests the 'top' safe-area edge, not
 // 'bottom': this screen renders inside the (tabs) navigator's content
@@ -74,7 +71,7 @@ export default function CreatorScreen() {
 
   if (!activeStream) {
     return (
-      <ScreenContainer edges={['top']} style={{ paddingHorizontal: theme.spacing.lg }}>
+      <ScreenContainer edges={['top']} style={{ paddingHorizontal: SCREEN_PADDING }}>
         <AppHeader
           title="Go Live"
           subtitle="Start broadcasting and connect with your audience in real time."
@@ -85,21 +82,17 @@ export default function CreatorScreen() {
           style={[
             styles.preview,
             {
-              borderRadius: PREVIEW_RADIUS,
-              marginTop: theme.spacing.lg,
+              borderRadius: theme.radius.xxl,
+              marginTop: theme.spacing.sm,
               ...theme.shadows.lg,
             },
           ]}
         >
           <LinearGradient
-            colors={[
-              theme.colors.accentMuted,
-              theme.colors.surfaceElevated,
-              theme.colors.background,
-            ]}
+            colors={theme.gradients.hero}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[StyleSheet.absoluteFillObject, { borderRadius: PREVIEW_RADIUS }]}
+            style={StyleSheet.absoluteFillObject}
           />
           <View style={styles.idleOverlay}>
             <Text style={[theme.typography.heading1, { color: theme.colors.textPrimary }]}>
@@ -111,8 +104,8 @@ export default function CreatorScreen() {
                 {
                   color: theme.colors.textSecondary,
                   textAlign: 'center',
-                  marginTop: theme.spacing.sm,
-                  paddingHorizontal: theme.spacing.xl,
+                  marginTop: theme.spacing.xs,
+                  paddingHorizontal: theme.spacing.lg,
                 },
               ]}
             >
@@ -123,7 +116,7 @@ export default function CreatorScreen() {
 
         <Animated.View
           entering={FadeInUp.duration(450).delay(120)}
-          style={{ marginTop: theme.spacing.xl }}
+          style={{ marginTop: theme.spacing.md }}
         >
           <PrimaryButton label="Start Stream" onPress={() => setIsGoLiveVisible(true)} />
         </Animated.View>
@@ -140,18 +133,18 @@ export default function CreatorScreen() {
   }
 
   return (
-    <ScreenContainer edges={['top']} style={{ padding: theme.spacing.lg }}>
+    <ScreenContainer edges={['top']} style={{ padding: SCREEN_PADDING }}>
       <Animated.View
         entering={FadeIn.duration(400)}
-        style={[styles.preview, { borderRadius: PREVIEW_RADIUS, ...theme.shadows.lg }]}
+        style={[styles.preview, { borderRadius: theme.radius.xxl, ...theme.shadows.lg }]}
       >
         <LinearGradient
-          colors={[theme.colors.accentMuted, theme.colors.surfaceElevated, theme.colors.background]}
+          colors={theme.gradients.hero}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[StyleSheet.absoluteFillObject, { borderRadius: PREVIEW_RADIUS }]}
+          style={StyleSheet.absoluteFillObject}
         />
-        <View style={[styles.overlayRow, { padding: theme.spacing.lg }]}>
+        <View style={[styles.overlayRow, { padding: theme.spacing.sm }]}>
           <LiveBadge />
           <ViewerCountBadge count={presence.viewerCount} />
         </View>
@@ -164,8 +157,9 @@ export default function CreatorScreen() {
           {
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.border,
+            borderWidth: StyleSheet.hairlineWidth,
             borderRadius: theme.radius.xl,
-            marginTop: theme.spacing.lg,
+            marginTop: theme.spacing.sm,
             ...theme.shadows.md,
           },
         ]}
@@ -174,22 +168,28 @@ export default function CreatorScreen() {
           style={[
             styles.chatHeader,
             {
-              paddingHorizontal: theme.spacing.lg,
-              paddingVertical: theme.spacing.md,
+              paddingHorizontal: theme.spacing.sm,
+              paddingVertical: theme.spacing.xs,
               borderBottomColor: theme.colors.border,
             },
           ]}
         >
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>
-            Chat
+          <View style={[styles.chatDot, { backgroundColor: theme.colors.accent }]} />
+          <Text
+            style={[
+              theme.typography.bodyStrong,
+              { color: theme.colors.textPrimary, marginLeft: theme.spacing.xs },
+            ]}
+          >
+            Live Chat
           </Text>
         </View>
         <View style={{ flex: 1, paddingHorizontal: theme.spacing.xs }}>
-          <ChatPanel streamId={activeStream.id} />
+          <ChatPanel streamId={activeStream.id} creatorId={activeStream.creator_id} />
         </View>
       </Animated.View>
 
-      <View style={{ marginTop: theme.spacing.lg }}>
+      <View style={{ marginTop: theme.spacing.sm }}>
         <PrimaryButton
           label={
             endStream.isPending ? 'Ending...' : endStream.isError ? 'Failed — Retry' : 'End Stream'
@@ -213,5 +213,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   chatPanel: { flex: 1, overflow: 'hidden' },
-  chatHeader: { borderBottomWidth: StyleSheet.hairlineWidth },
+  chatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  chatDot: { width: 6, height: 6, borderRadius: 3 },
 });

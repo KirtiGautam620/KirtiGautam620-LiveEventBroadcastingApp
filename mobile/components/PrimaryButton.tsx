@@ -1,4 +1,5 @@
-import { StyleSheet, Text } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme';
 
@@ -18,35 +19,49 @@ export function PrimaryButton({
   variant = 'accent',
 }: PrimaryButtonProps) {
   const theme = useTheme();
-  const backgroundColor = variant === 'danger' ? theme.colors.danger : theme.colors.accent;
+  // Subtle two-stop gradient rather than a flat fill for the accent
+  // variant. Danger stays a single flat hue — a gradient on a destructive
+  // action reads as decorative rather than serious.
+  const gradientColors =
+    variant === 'danger'
+      ? ([theme.colors.danger, theme.colors.danger] as const)
+      : ([theme.colors.accent, theme.colors.accentPink] as const);
 
   return (
-    <AnimatedPressable
-      onPress={onPress}
-      disabled={disabled}
-      style={[
-        styles.base,
-        {
-          backgroundColor,
-          borderRadius: theme.radius.lg,
-          paddingVertical: theme.spacing.md,
-          paddingHorizontal: theme.spacing.xl,
-          opacity: disabled ? 0.5 : 1,
-        },
-      ]}
-    >
-      <Text
-        style={[
-          theme.typography.bodyStrong,
-          { color: theme.colors.textPrimary, textAlign: 'center' },
-        ]}
+    // Shadow lives on this outer, non-clipping wrapper — combining a shadow
+    // with overflow:'hidden' on the same view clips the shadow to nothing
+    // on iOS, so the gradient-clipping view below stays shadow-free.
+    <View style={disabled ? undefined : theme.shadows.sm}>
+      <AnimatedPressable
+        onPress={onPress}
+        disabled={disabled}
+        style={[styles.base, { borderRadius: theme.radius.lg, opacity: disabled ? 0.5 : 1 }]}
       >
-        {label}
-      </Text>
-    </AnimatedPressable>
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <Text
+          style={[
+            theme.typography.bodyStrong,
+            styles.label,
+            {
+              color: theme.colors.textPrimary,
+              paddingVertical: theme.spacing.sm,
+              paddingHorizontal: theme.spacing.lg,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </AnimatedPressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  base: { alignItems: 'center', justifyContent: 'center' },
+  base: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  label: { textAlign: 'center' },
 });

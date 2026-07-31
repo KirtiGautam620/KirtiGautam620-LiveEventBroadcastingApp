@@ -57,7 +57,7 @@ export function GoLiveModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}>
+      <View style={[styles.backdrop, { backgroundColor: theme.colors.overlayStrong }]}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.avoider}
@@ -66,14 +66,22 @@ export function GoLiveModal({
             style={[
               styles.sheet,
               {
-                backgroundColor: theme.colors.surface,
-                borderTopLeftRadius: theme.radius.xl,
-                borderTopRightRadius: theme.radius.xl,
-                padding: theme.spacing.lg,
-                ...theme.shadows.lg,
+                backgroundColor: theme.colors.surfaceElevated,
+                borderColor: theme.colors.border,
+                borderWidth: StyleSheet.hairlineWidth,
+                borderTopLeftRadius: theme.radius.xxl,
+                borderTopRightRadius: theme.radius.xxl,
+                padding: theme.spacing.md,
+                ...theme.shadows.xl,
               },
             ]}
           >
+            <View
+              style={[
+                styles.handle,
+                { backgroundColor: theme.colors.glassBorder, marginBottom: theme.spacing.sm },
+              ]}
+            />
             <Text style={[theme.typography.heading1, { color: theme.colors.textPrimary }]}>
               Go Live
             </Text>
@@ -86,11 +94,11 @@ export function GoLiveModal({
               Give your stream a title before you start broadcasting.
             </Text>
 
-            <View style={{ marginTop: theme.spacing.xl }}>
+            <View style={{ marginTop: theme.spacing.md }}>
               <Text
                 style={[
                   theme.typography.label,
-                  { color: theme.colors.textSecondary, marginBottom: theme.spacing.sm },
+                  { color: theme.colors.textSecondary, marginBottom: theme.spacing.xs },
                 ]}
               >
                 Stream Title
@@ -100,6 +108,7 @@ export function GoLiveModal({
                 onChangeText={setTitle}
                 placeholder="What are you streaming today?"
                 placeholderTextColor={theme.colors.textMuted}
+                accessibilityLabel="Stream title"
                 autoFocus
                 returnKeyType="next"
                 style={[
@@ -107,20 +116,20 @@ export function GoLiveModal({
                   styles.input,
                   {
                     color: theme.colors.textPrimary,
-                    backgroundColor: theme.colors.surfaceElevated,
-                    borderColor: theme.colors.border,
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.glassBorder,
                     borderRadius: theme.radius.lg,
-                    paddingHorizontal: theme.spacing.lg,
+                    paddingHorizontal: theme.spacing.sm,
                   },
                 ]}
               />
             </View>
 
-            <View style={{ marginTop: theme.spacing.lg }}>
+            <View style={{ marginTop: theme.spacing.sm }}>
               <Text
                 style={[
                   theme.typography.label,
-                  { color: theme.colors.textSecondary, marginBottom: theme.spacing.sm },
+                  { color: theme.colors.textSecondary, marginBottom: theme.spacing.xs },
                 ]}
               >
                 Category (optional)
@@ -130,6 +139,7 @@ export function GoLiveModal({
                 onChangeText={setCategory}
                 placeholder={DEFAULT_CATEGORY}
                 placeholderTextColor={theme.colors.textMuted}
+                accessibilityLabel="Category"
                 returnKeyType="done"
                 onSubmitEditing={handleSubmit}
                 style={[
@@ -137,10 +147,10 @@ export function GoLiveModal({
                   styles.input,
                   {
                     color: theme.colors.textPrimary,
-                    backgroundColor: theme.colors.surfaceElevated,
-                    borderColor: theme.colors.border,
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.glassBorder,
                     borderRadius: theme.radius.lg,
-                    paddingHorizontal: theme.spacing.lg,
+                    paddingHorizontal: theme.spacing.sm,
                   },
                 ]}
               />
@@ -150,20 +160,20 @@ export function GoLiveModal({
               <Text
                 style={[
                   theme.typography.caption,
-                  { color: theme.colors.danger, marginTop: theme.spacing.lg },
+                  { color: theme.colors.danger, marginTop: theme.spacing.sm },
                 ]}
               >
                 {errorMessage}
               </Text>
             ) : null}
 
-            <View style={{ marginTop: theme.spacing.xl }}>
+            <View style={{ marginTop: theme.spacing.md }}>
               <PrimaryButton
                 label={isSubmitting ? 'Starting...' : 'Start Stream'}
                 onPress={handleSubmit}
                 disabled={!canSubmit}
               />
-              <View style={{ marginTop: theme.spacing.sm }}>
+              <View style={{ marginTop: theme.spacing.xs }}>
                 <SecondaryButton label="Cancel" onPress={handleClose} disabled={isSubmitting} />
               </View>
             </View>
@@ -178,5 +188,6 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end' },
   avoider: { width: '100%' },
   sheet: {},
+  handle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center' },
   input: { height: 52, borderWidth: StyleSheet.hairlineWidth },
 });

@@ -80,6 +80,7 @@ export function DisplayNameScreen({ userId }: DisplayNameScreenProps) {
               onBlur={() => setIsTouched(true)}
               placeholder="e.g. Alex Rivera"
               placeholderTextColor={theme.colors.textMuted}
+              accessibilityLabel="Display name"
               autoFocus
               autoCapitalize="words"
               autoCorrect={false}

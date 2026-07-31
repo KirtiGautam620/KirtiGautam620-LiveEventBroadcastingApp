@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 import { memo, useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
 import { AnimatedPressable, EmptyState, ErrorView, LoadingView } from '@/components';
 import { useChat, type ChatDisplayMessage } from '@/hooks';
@@ -11,9 +12,13 @@ import { useAutoScrollToEnd } from './useAutoScrollToEnd';
 
 interface ChatPanelProps {
   streamId: string;
+  // Purely presentational — lets ChatMessageBubble highlight a message
+  // from the stream's creator distinctly from other viewers. Optional so
+  // existing callers that don't have it handy keep working unchanged.
+  creatorId?: string | null;
 }
 
-function ChatPanelComponent({ streamId }: ChatPanelProps) {
+function ChatPanelComponent({ streamId, creatorId }: ChatPanelProps) {
   const theme = useTheme();
   const { messages, currentUserId, isLoading, isError, refetch, sendMessage, isSending } =
     useChat(streamId);
@@ -25,9 +30,13 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<ChatDisplayMessage>) => (
-      <ChatMessageBubble message={item} isOwnMessage={item.sender_id === currentUserId} />
+      <ChatMessageBubble
+        message={item}
+        isOwnMessage={item.sender_id === currentUserId}
+        isCreatorMessage={creatorId != null && item.sender_id === creatorId}
+      />
     ),
-    [currentUserId],
+    [currentUserId, creatorId],
   );
 
   const keyExtractor = useCallback((item: ChatDisplayMessage) => item.id, []);
@@ -36,11 +45,11 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
   // than a plain View — a fresh object every render here is worth avoiding.
   const contentContainerStyle = useMemo(
     () => ({
-      paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.md,
-      paddingBottom: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.sm,
+      paddingTop: theme.spacing.sm,
+      paddingBottom: theme.spacing.xs,
     }),
-    [theme.spacing.lg, theme.spacing.md, theme.spacing.sm],
+    [theme.spacing.sm, theme.spacing.xs],
   );
 
   const handleSend = useCallback(() => {
@@ -65,10 +74,15 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
             description="Something went wrong while loading messages."
             actionLabel="Retry"
             onAction={() => void refetch()}
+            icon="chatbubble-ellipses-outline"
           />
         ) : messages.length === 0 ? (
           <View style={styles.emptyWrapper}>
-            <EmptyState title="No messages yet" description="Be the first to say something." />
+            <EmptyState
+              title="No messages yet"
+              description="Be the first to say something."
+              icon="chatbubble-outline"
+            />
           </View>
         ) : (
           <FlashList
@@ -83,19 +97,22 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
         )}
       </View>
 
+      {/* Sticky input bar — always the last element in this flex:1 column,
+          so it stays pinned to the bottom of the chat panel regardless of
+          message count. */}
       <View
         style={[
           styles.inputBar,
           {
             backgroundColor: theme.colors.overlay,
             borderRadius: theme.radius.full,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: isInputFocused ? theme.colors.accent : theme.colors.border,
-            paddingHorizontal: theme.spacing.lg,
-            marginHorizontal: theme.spacing.lg,
-            marginTop: theme.spacing.sm,
-            marginBottom: theme.spacing.sm,
-            ...theme.shadows.sm,
+            borderWidth: isInputFocused ? 1.5 : StyleSheet.hairlineWidth,
+            borderColor: isInputFocused ? theme.colors.accent : theme.colors.glassBorder,
+            paddingHorizontal: theme.spacing.sm,
+            marginHorizontal: theme.spacing.sm,
+            marginTop: theme.spacing.xs,
+            marginBottom: theme.spacing.xs,
+            ...(isInputFocused ? theme.shadows.sm : null),
           },
         ]}
       >
@@ -106,6 +123,7 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
           onBlur={handleBlur}
           placeholder="Say something..."
           placeholderTextColor={theme.colors.textMuted}
+          accessibilityLabel="Message"
           style={[theme.typography.body, { color: theme.colors.textPrimary, flex: 1 }]}
           editable={!isSending}
           onSubmitEditing={handleSend}
@@ -114,25 +132,31 @@ function ChatPanelComponent({ streamId }: ChatPanelProps) {
         <AnimatedPressable
           onPress={handleSend}
           disabled={!canSend}
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
+          // Same fix as LiveChatOverlay's send button: this Pressable sits
+          // flush against the TextInput's right edge, so a uniform hitSlop
+          // steals taps from the input's own bounds on its left side.
+          hitSlop={{ top: 8, bottom: 8, right: 8, left: 0 }}
           style={[
             styles.sendButton,
             {
               backgroundColor: theme.colors.accent,
               borderRadius: theme.radius.full,
-              opacity: canSend ? 1 : 0.5,
-              ...theme.shadows.sm,
+              opacity: canSend ? 1 : 0.4,
+              ...(canSend ? theme.shadows.sm : null),
             },
           ]}
         >
-          <Text style={[theme.typography.bodyStrong, { color: theme.colors.textPrimary }]}>➤</Text>
+          <Ionicons name="send" size={16} color={theme.colors.textPrimary} />
         </AnimatedPressable>
       </View>
     </View>
   );
 }
 
-// Props are a single primitive (streamId) — memoizing avoids re-rendering
-// the whole chat tree (list + input) when the parent screen re-renders for
+// Props are a couple of primitives — memoizing avoids re-rendering the
+// whole chat tree (list + input) when the parent screen re-renders for
 // unrelated reasons.
 export const ChatPanel = memo(ChatPanelComponent);
 

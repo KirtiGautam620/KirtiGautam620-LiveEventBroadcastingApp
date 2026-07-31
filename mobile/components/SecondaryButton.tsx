@@ -20,11 +20,12 @@ export function SecondaryButton({ label, onPress, disabled }: SecondaryButtonPro
       style={[
         styles.base,
         {
-          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.surfaceElevated,
+          borderColor: theme.colors.glassBorder,
           borderWidth: StyleSheet.hairlineWidth,
           borderRadius: theme.radius.lg,
-          paddingVertical: theme.spacing.md,
-          paddingHorizontal: theme.spacing.xl,
+          paddingVertical: theme.spacing.sm,
+          paddingHorizontal: theme.spacing.lg,
           opacity: disabled ? 0.5 : 1,
         },
       ]}

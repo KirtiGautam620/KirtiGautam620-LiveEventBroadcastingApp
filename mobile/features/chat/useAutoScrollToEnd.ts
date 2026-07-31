@@ -19,6 +19,12 @@ export function useAutoScrollToEnd<T extends AutoScrollableMessage>(
 ) {
   const listRef = useRef<FlashListRef<T>>(null);
   const isAtBottomRef = useRef(true);
+  // The very first time messages populate (opening a stream that already
+  // has chat history), landing on the newest message is still correct —
+  // but doing it with an *animated* scroll is what actually reads as the
+  // reported bug ("chat immediately jumps"). Everything after this first
+  // positioning is a real new message arriving live, which should animate.
+  const hasPositionedRef = useRef(false);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -31,7 +37,8 @@ export function useAutoScrollToEnd<T extends AutoScrollableMessage>(
     const last = messages[messages.length - 1];
     const isOwnMessage = last?.sender_id === currentUserId;
     if (isAtBottomRef.current || isOwnMessage) {
-      listRef.current?.scrollToEnd({ animated: true });
+      listRef.current?.scrollToEnd({ animated: hasPositionedRef.current });
+      hasPositionedRef.current = true;
     }
     // messages.length (not the array itself) mirrors the previous
     // per-screen implementations this hook replaces — a new message always

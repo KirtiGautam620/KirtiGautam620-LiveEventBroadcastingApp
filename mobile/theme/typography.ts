@@ -1,4 +1,5 @@
 export const fontSize = {
+  micro: 11,
   xs: 12,
   sm: 14,
   base: 16,
@@ -9,6 +10,7 @@ export const fontSize = {
 } as const;
 
 export const lineHeight = {
+  micro: 14,
   xs: 16,
   sm: 20,
   base: 24,
@@ -25,7 +27,9 @@ export const fontWeight = {
   bold: '700',
 } as const;
 
-// Composed presets — what components actually use.
+// Composed presets — what components actually use. Hierarchy: Section
+// titles (heading1) are large/bold, card titles (heading2) are semibold,
+// usernames are medium, secondary labels (caption) are regular.
 export const typography = {
   display: {
     fontSize: fontSize.display,
@@ -40,6 +44,12 @@ export const typography = {
     lineHeight: lineHeight.base,
     fontWeight: fontWeight.semibold,
   },
+  username: { fontSize: fontSize.sm, lineHeight: lineHeight.sm, fontWeight: fontWeight.medium },
   caption: { fontSize: fontSize.sm, lineHeight: lineHeight.sm, fontWeight: fontWeight.regular },
   label: { fontSize: fontSize.xs, lineHeight: lineHeight.xs, fontWeight: fontWeight.medium },
+  micro: {
+    fontSize: fontSize.micro,
+    lineHeight: lineHeight.micro,
+    fontWeight: fontWeight.regular,
+  },
 } as const;

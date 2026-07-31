@@ -13,19 +13,17 @@ export function AppHeader({ title, subtitle, right }: AppHeaderProps) {
   const theme = useTheme();
 
   return (
-    <View
-      style={[
-        styles.container,
-        { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.md },
-      ]}
-    >
-      <View>
+    // Horizontal insets are the caller's ScreenContainer's job, not this
+    // component's — this only owns the title/subtitle block and the gap
+    // beneath it.
+    <View style={[styles.container, { paddingBottom: theme.spacing.md }]}>
+      <View style={styles.titleBlock}>
         <Text style={[theme.typography.display, { color: theme.colors.textPrimary }]}>{title}</Text>
         {subtitle ? (
           <Text
             style={[
               theme.typography.caption,
-              { color: theme.colors.textSecondary, marginTop: theme.spacing.xs / 2 },
+              { color: theme.colors.textSecondary, marginTop: theme.spacing.xs },
             ]}
           >
             {subtitle}
@@ -43,4 +41,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  titleBlock: { flexShrink: 1 },
 });
